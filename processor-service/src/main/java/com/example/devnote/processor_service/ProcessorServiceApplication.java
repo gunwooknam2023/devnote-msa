@@ -7,7 +7,6 @@ import org.springframework.kafka.annotation.EnableKafka;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableKafka
 public class ProcessorServiceApplication {
 
 	public static void main(String[] args) {

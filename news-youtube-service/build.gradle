@@ -1,0 +1,23 @@
+plugins {
+	id 'org.springframework.boot'
+	id 'io.spring.dependency-management'
+	id 'java'
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// REST 호출
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	// Eureka Client
+	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+	// YouTube Data API Java Client
+	implementation 'com.google.apis:google-api-services-youtube:v3-rev222-1.25.0'
+	implementation 'com.google.api-client:google-api-client:1.34.1'  // 1.34.2 는 아직 없을 수 있으니 1.34.1 로 낮춤
+	// RSS 파싱 (Rome)
+	implementation 'com.rometools:rome:1.18.0'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}

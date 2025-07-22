@@ -1,0 +1,5 @@
+rootProject.name = 'devnote'
+include 'eureka-server'
+include 'api-gateway'
+include 'news-youtube-service'
+include 'processor-service'

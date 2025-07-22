@@ -1,0 +1,30 @@
+plugins {
+	id 'org.springframework.boot'
+	id 'io.spring.dependency-management'
+	id 'java'
+}
+
+group = 'com.example.devnote'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// REST 엔드포인트 지원
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	// Eureka Client
+	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+	// Kafka 소비/생산
+	implementation 'org.springframework.kafka:spring-kafka'
+	// JPA + MariaDB
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	runtimeOnly   'org.mariadb.jdbc:mariadb-java-client'
+	// Redis 캐시
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.kafka:spring-kafka-test'
+}

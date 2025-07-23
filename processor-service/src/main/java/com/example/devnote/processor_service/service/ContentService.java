@@ -7,15 +7,18 @@ import com.example.devnote.processor_service.entity.ContentEntity;
 import com.example.devnote.processor_service.repository.ContentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import jakarta.persistence.criteria.Predicate;
 
 /**
  * 비즈니스 로직 수행용 서비스
@@ -26,8 +29,6 @@ import java.util.stream.Collectors;
 public class ContentService {
     private final ContentRepository contentRepository;
     private final RedisTemplate<String, Object> redis;
-
-    private static final int DEFAULT_LIMIT = 20;
     private static final String CACHE_PREFIX = "cache:";
 
     /** Kafka 메시지 수신 → 저장 + Redis 캐시 */
@@ -71,41 +72,83 @@ public class ContentService {
         }
     }
 
-    /** 커서 기반 조회: category, cursor(id 이하), limit */
+    /**
+     * 페이지네이션 + 필터 + 정렬 적용된 콘텐츠 조회
+     */
     public PageResponseDto<ContentDto> getContents(
+            int page,
+            int size,
             String source,
             String category,
-            Long cursor,
-            Integer limit
+            String title,
+            String sortOrder
     ) {
-        int fetchLimit = (limit == null ? DEFAULT_LIMIT : limit);
-        Pageable pg = PageRequest.of(0, fetchLimit, Sort.by("id").descending());
+        // Sort 설정 (publishedAt 기준)
+        Sort sort = Sort.by("publishedAt");
 
-        List<ContentEntity> ents;
-        if (category == null || category.isBlank()) {
-            if (cursor == null || cursor <= 0) {
-                ents = contentRepository.findBySourceOrderByIdDesc(source, pg);
-            } else {
-                ents = contentRepository.findBySourceAndIdLessThanOrderByIdDesc(source, cursor, pg);
-            }
+        if("newest".equalsIgnoreCase(sortOrder)) {
+            sort = sort.descending();
+        } else if ("oldest".equalsIgnoreCase(sortOrder)) {
+            sort = sort.ascending();
         } else {
-            // 기존 카테고리 조회
-            if (cursor == null || cursor <= 0) {
-                ents = contentRepository.findByCategoryOrderByIdDesc(category, pg);
-            } else {
-                ents = contentRepository.findByCategoryAndIdLessThanOrderByIdDesc(category, cursor, pg);
-            }
+            log.warn("Unkown sort order '{}', defaulting to newst", sortOrder);
+            sort = sort.descending();
         }
 
-        List<ContentDto> dtos = ents.stream().map(this::toDto).collect(Collectors.toList());
-        Long nextCursor = dtos.isEmpty() ? null : dtos.get(dtos.size() - 1).getId();
+        // Pageable
+        Pageable pageable = PageRequest.of(page, size, sort);
 
+        // 동적 필터링
+        Specification<ContentEntity> spec = buildSpecification(source, category, title);
+
+        // 조회
+        Page<ContentEntity> entityPage = contentRepository.findAll(spec, pageable);
+
+        // Dto 변환
+        List<ContentDto> dtos = entityPage.stream()
+                .map(this::toDto)
+                .toList();
+
+        // PageResponseDto 래핑
         return PageResponseDto.<ContentDto>builder()
                 .items(dtos)
-                .nextCursor(nextCursor)
+                .page(entityPage.getNumber())
+                .size(entityPage.getSize())
+                .totalElements(entityPage.getTotalElements())
+                .totalPages(entityPage.getTotalPages())
                 .build();
     }
 
+    /**
+     * 조건에 따른 JPA Specification 생성
+     */
+    private Specification<ContentEntity> buildSpecification(
+            String source,
+            String category,
+            String title
+    ) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (source != null && !source.isBlank()) {
+                predicates.add(cb.equal(root.get("source"), source));
+            }
+            if (category != null && !category.isBlank()) {
+                predicates.add(cb.equal(root.get("category"), category));
+            }
+            if (title != null && !title.isBlank()) {
+                predicates.add(cb.like(
+                        cb.lower(root.get("title")),
+                        "%" + title.toLowerCase() + "%"));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    /**
+     * Entity → DTO 변환
+     */
     private ContentDto toDto(ContentEntity e) {
         return ContentDto.builder()
                 .id(e.getId())

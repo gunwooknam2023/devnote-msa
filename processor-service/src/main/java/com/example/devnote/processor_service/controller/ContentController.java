@@ -28,18 +28,22 @@ public class ContentController {
     /** 페이징된 콘텐츠 리스트 조회 → DB 조회 후 PageResponseDto 반환 */
     @GetMapping
     public ResponseEntity<ApiResponseDto<PageResponseDto<ContentDto>>> list(
-            @RequestParam String category,
+            @RequestParam String source,
+            @RequestParam(required = false) String category,
             @RequestParam(required = false) Long cursor,
             @RequestParam(required = false) Integer limit
     ) {
-        log.info("API list() category={}, cursor={}, limit={}", category, cursor, limit);
-        PageResponseDto<ContentDto> page = contentService.getContents(category, cursor, limit);
-        ApiResponseDto<PageResponseDto<ContentDto>> resp = ApiResponseDto.<PageResponseDto<ContentDto>>builder()
+        log.info("API list() source={}, category={}, cursor={}, limit={}",
+                source, category, cursor, limit);
+
+        PageResponseDto<ContentDto> page =
+                contentService.getContents(source, category, cursor, limit);
+
+        return ResponseEntity.ok(ApiResponseDto.<PageResponseDto<ContentDto>>builder()
                 .message("Fetched content list")
                 .statusCode(200)
                 .data(page)
-                .build();
-        return ResponseEntity.ok(resp);
+                .build());
     }
 
     /** 헬스 체크: 서비스 정상 여부 반환 */

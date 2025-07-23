@@ -55,6 +55,7 @@ public class ContentService {
                     .title(msg.getTitle())
                     .link(msg.getLink())
                     .thumbnailUrl(msg.getThumbnailUrl())
+                    .description(msg.getDescription())
                     .publishedAt(msg.getPublishedAt())
                     .build();
             ent = contentRepository.save(ent);
@@ -72,6 +73,7 @@ public class ContentService {
 
     /** 커서 기반 조회: category, cursor(id 이하), limit */
     public PageResponseDto<ContentDto> getContents(
+            String source,
             String category,
             Long cursor,
             Integer limit
@@ -79,17 +81,24 @@ public class ContentService {
         int fetchLimit = (limit == null ? DEFAULT_LIMIT : limit);
         Pageable pg = PageRequest.of(0, fetchLimit, Sort.by("id").descending());
 
-        List<ContentEntity> ents = (cursor == null || cursor <= 0)
-                ? contentRepository.findByCategoryOrderByIdDesc(category, pg)
-                : contentRepository.findByCategoryAndIdLessThanOrderByIdDesc(category, cursor, pg);
+        List<ContentEntity> ents;
+        if (category == null || category.isBlank()) {
+            if (cursor == null || cursor <= 0) {
+                ents = contentRepository.findBySourceOrderByIdDesc(source, pg);
+            } else {
+                ents = contentRepository.findBySourceAndIdLessThanOrderByIdDesc(source, cursor, pg);
+            }
+        } else {
+            // 기존 카테고리 조회
+            if (cursor == null || cursor <= 0) {
+                ents = contentRepository.findByCategoryOrderByIdDesc(category, pg);
+            } else {
+                ents = contentRepository.findByCategoryAndIdLessThanOrderByIdDesc(category, cursor, pg);
+            }
+        }
 
-        List<ContentDto> dtos = ents.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
-
-        Long nextCursor = dtos.isEmpty()
-                ? null
-                : dtos.get(dtos.size() - 1).getId();
+        List<ContentDto> dtos = ents.stream().map(this::toDto).collect(Collectors.toList());
+        Long nextCursor = dtos.isEmpty() ? null : dtos.get(dtos.size() - 1).getId();
 
         return PageResponseDto.<ContentDto>builder()
                 .items(dtos)
@@ -105,6 +114,7 @@ public class ContentService {
                 .title(e.getTitle())
                 .link(e.getLink())
                 .thumbnailUrl(e.getThumbnailUrl())
+                .description(e.getDescription())
                 .publishedAt(e.getPublishedAt())
                 .createdAt(e.getCreatedAt())
                 .build();

@@ -26,6 +26,9 @@ public class ContentEntity {
     @Column(length = 500)
     private String link;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
     private String thumbnailUrl;
     private Instant publishedAt;
     private Instant createdAt;

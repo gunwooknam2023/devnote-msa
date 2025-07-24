@@ -39,7 +39,7 @@ public class ContentController {
     @GetMapping
     public ResponseEntity<ApiResponseDto<PageResponseDto<ContentDto>>> list(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "24") int size,
             @RequestParam(required = false) String source,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String title,

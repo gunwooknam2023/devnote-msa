@@ -21,4 +21,8 @@ public class ContentDto {
     private String thumbnailUrl; // 썸네일 URL (YouTube 전용)
     private Instant publishedAt; // 게시일
     private Instant createdAt;   // 생성일
+
+    // 유튜브
+    private String channelTitle;        // 유튜브 채널명
+    private String channelThumbnailUrl; // 채널 썸네일
 }

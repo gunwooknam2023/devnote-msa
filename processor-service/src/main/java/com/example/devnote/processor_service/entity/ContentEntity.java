@@ -29,6 +29,12 @@ public class ContentEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(length = 255)
+    private String channelTitle;
+
+    @Column(length = 512)
+    private String channelThumbnailUrl;
+
     private String thumbnailUrl;
     private Instant publishedAt;
     private Instant createdAt;

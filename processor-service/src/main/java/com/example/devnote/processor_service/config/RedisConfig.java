@@ -1,5 +1,8 @@
 package com.example.devnote.processor_service.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +28,10 @@ public class RedisConfig {
         // Key: String
         tpl.setKeySerializer(new StringRedisSerializer());
         tpl.setHashKeySerializer(new StringRedisSerializer());
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
         // Value: JSON
         GenericJackson2JsonRedisSerializer ser = new GenericJackson2JsonRedisSerializer();

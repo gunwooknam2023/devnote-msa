@@ -44,11 +44,35 @@ public class YouTubeFetchService {
                     .setKey(apiKey)
                     .setQ("개발 " + category)
                     .setType("video")
-                    .setMaxResults(10L);
+                    .setMaxResults(50L);
 
             List<SearchResult> items = request.execute().getItems();
             for (SearchResult r : items) {
                 var sn = r.getSnippet();
+                String channelId = sn.getChannelId();
+                String channelTitle = sn.getChannelTitle();
+
+                // 채널 썸네일
+                String channelThumbnailUrl = null;
+                try {
+                    var channelReq = youtubeclient.channels()
+                            .list("snippet")
+                            .setKey(apiKey)
+                            .setId(channelId);
+
+                    var channelList = channelReq.execute().getItems();
+
+                    if (!channelList.isEmpty()) {
+                        channelThumbnailUrl = channelList.get(0)
+                                .getSnippet()
+                                .getThumbnails()
+                                .getDefault()
+                                .getUrl();
+                    }
+                } catch (Exception ex) {
+                    log.warn("Failed to fetch channel thumbnail for {}: {}", channelId, ex.getMessage());
+                }
+
                 ContentMessageDto msg = ContentMessageDto.builder()
                         .source("YOUTUBE")
                         .category(category)
@@ -56,6 +80,8 @@ public class YouTubeFetchService {
                         .link("https://www.youtube.com/watch?v=" + r.getId().getVideoId())
                         .thumbnailUrl(sn.getThumbnails().getDefault().getUrl())
                         .publishedAt(Instant.parse(sn.getPublishedAt().toStringRfc3339()))
+                        .channelTitle(channelTitle)
+                        .channelThumbanilUrl(channelThumbnailUrl)
                         .build();
 
                 kafkaTemplate.send(

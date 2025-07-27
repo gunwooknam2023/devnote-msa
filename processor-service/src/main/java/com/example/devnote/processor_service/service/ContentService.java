@@ -60,6 +60,7 @@ public class ContentService {
                     .publishedAt(msg.getPublishedAt())
                     .channelTitle(msg.getChannelTitle())
                     .channelThumbnailUrl(msg.getChannelThumbanilUrl())
+                    .viewCount(msg.getViewCount())
                     .build();
             ent = contentRepository.save(ent);
             log.info("Saved ContentEntity id={}", ent.getId());
@@ -163,6 +164,7 @@ public class ContentService {
                 .publishedAt(e.getPublishedAt())
                 .channelTitle(e.getChannelTitle())
                 .channelThumbnailUrl(e.getChannelThumbnailUrl())
+                .viewCount(e.getViewCount())
                 .createdAt(e.getCreatedAt())
                 .build();
     }

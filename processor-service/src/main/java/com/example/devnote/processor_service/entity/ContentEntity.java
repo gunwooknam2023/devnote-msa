@@ -35,6 +35,8 @@ public class ContentEntity {
     @Column(length = 512)
     private String channelThumbnailUrl;
 
+    private Long viewCount;
+
     private String thumbnailUrl;
     private Instant publishedAt;
     private Instant createdAt;

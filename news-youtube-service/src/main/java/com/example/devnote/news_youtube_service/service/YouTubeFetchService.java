@@ -11,6 +11,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.List;
 
@@ -44,13 +45,33 @@ public class YouTubeFetchService {
                     .setKey(apiKey)
                     .setQ("개발 " + category)
                     .setType("video")
-                    .setMaxResults(50L);
+                    .setMaxResults(1L);
 
             List<SearchResult> items = request.execute().getItems();
             for (SearchResult r : items) {
                 var sn = r.getSnippet();
+                String videoId = r.getId().getVideoId();
                 String channelId = sn.getChannelId();
                 String channelTitle = sn.getChannelTitle();
+
+                // 영상 통계(조회수) 가져오기
+                Long viewCount = null;
+                try {
+                    var statsReq = youtubeclient.videos()
+                            .list("statistics")
+                            .setKey(apiKey)
+                            .setId(videoId);
+                    var statsItemOpt = statsReq.execute().getItems().stream().findFirst();
+                    if (statsItemOpt.isPresent()) {
+                        BigInteger countBI = statsItemOpt.get()
+                                .getStatistics()
+                                .getViewCount();
+                        // BigInteger → Long 변환
+                        viewCount = (countBI != null ? countBI.longValue() : null);
+                    }
+                } catch (Exception ex) {
+                    log.warn("Failed to fetch statistics for video {}: {}", videoId, ex.getMessage());
+                }
 
                 // 채널 썸네일
                 String channelThumbnailUrl = null;
@@ -82,6 +103,7 @@ public class YouTubeFetchService {
                         .publishedAt(Instant.parse(sn.getPublishedAt().toStringRfc3339()))
                         .channelTitle(channelTitle)
                         .channelThumbanilUrl(channelThumbnailUrl)
+                        .viewCount(viewCount)
                         .build();
 
                 kafkaTemplate.send(

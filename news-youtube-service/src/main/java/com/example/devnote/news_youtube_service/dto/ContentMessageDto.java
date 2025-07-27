@@ -26,4 +26,5 @@ public class ContentMessageDto {
     // 유튜브
     private String channelTitle;        // 유튜브 채널명
     private String channelThumbanilUrl; // 채널 썸네일
+    private Long viewCount;             // 영상 조회수
 }

@@ -93,7 +93,7 @@ public class YouTubeFetchService {
                         channelThumbnailUrl = channelList.get(0)
                                 .getSnippet()
                                 .getThumbnails()
-                                .getDefault()
+                                .getHigh()
                                 .getUrl();
                     }
                 } catch (Exception ex) {
@@ -105,7 +105,7 @@ public class YouTubeFetchService {
                         .category(category)
                         .title(sn.getTitle())
                         .link("https://www.youtube.com/watch?v=" + r.getId().getVideoId())
-                        .thumbnailUrl(sn.getThumbnails().getDefault().getUrl())
+                        .thumbnailUrl(sn.getThumbnails().getHigh().getUrl())
                         .publishedAt(Instant.parse(sn.getPublishedAt().toStringRfc3339()))
                         .channelTitle(channelTitle)
                         .channelThumbanilUrl(channelThumbnailUrl)
@@ -187,7 +187,7 @@ public class YouTubeFetchService {
                         channelThumbnailUrl = channelList.get(0)
                                 .getSnippet()
                                 .getThumbnails()
-                                .getDefault()
+                                .getHigh()
                                 .getUrl();
                     }
                 } catch (Exception ex) {
@@ -200,7 +200,7 @@ public class YouTubeFetchService {
                         .category("TBC")
                         .title(sn.getTitle())
                         .link("https://www.youtube.com/watch?v=" + videoId)
-                        .thumbnailUrl(sn.getThumbnails().getDefault().getUrl())
+                        .thumbnailUrl(sn.getThumbnails().getHigh().getUrl())
                         .publishedAt(Instant.parse(sn.getPublishedAt().toStringRfc3339()))
                         .channelTitle(channelTitle)
                         .channelThumbanilUrl(channelThumbnailUrl)

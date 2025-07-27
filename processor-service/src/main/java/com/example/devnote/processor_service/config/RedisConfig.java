@@ -34,7 +34,7 @@ public class RedisConfig {
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
         // Value: JSON
-        GenericJackson2JsonRedisSerializer ser = new GenericJackson2JsonRedisSerializer();
+        GenericJackson2JsonRedisSerializer ser = new GenericJackson2JsonRedisSerializer(mapper);
         tpl.setValueSerializer(ser);
         tpl.setHashValueSerializer(ser);
 

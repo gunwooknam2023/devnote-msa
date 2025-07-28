@@ -70,7 +70,7 @@ public class YouTubeFetchService {
             items.forEach(r -> {
                 var sn = r.getSnippet();
                 publishContent(
-                        /*category*/      category,
+                        /*category*/      "TBC",
                         /*videoId*/       r.getId().getVideoId(),
                         /*channelId*/     sn.getChannelId(),
                         /*channelTitle*/  sn.getChannelTitle(),

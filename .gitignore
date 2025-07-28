@@ -38,3 +38,4 @@ out/
 
 application.yml
 application-local.yml
+/processor-service/src/main/resources/gen-lang-client-*.json

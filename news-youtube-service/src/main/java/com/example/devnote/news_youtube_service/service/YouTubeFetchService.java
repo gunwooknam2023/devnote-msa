@@ -2,18 +2,27 @@ package com.example.devnote.news_youtube_service.service;
 
 import com.example.devnote.news_youtube_service.config.KafkaProducerConfig;
 import com.example.devnote.news_youtube_service.dto.ContentMessageDto;
+import com.example.devnote.news_youtube_service.entity.ChannelSubscription;
+import com.example.devnote.news_youtube_service.repository.ChannelSubscriptionRepository;
+import com.google.api.client.util.DateTime;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.PlaylistItem;
 import com.google.api.services.youtube.model.SearchResult;
+import com.rometools.rome.feed.synd.SyndEntry;
+import com.rometools.rome.feed.synd.SyndFeed;
+import com.rometools.rome.io.SyndFeedInput;
+import com.rometools.rome.io.XmlReader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.math.BigInteger;
+import java.net.URL;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -26,129 +35,185 @@ public class YouTubeFetchService {
     @Value("${youtube.api.key}")
     private String apiKey;
 
+    private final ChannelSubscriptionRepository channelSubscriptionRepository;
+
     /** Kafka에 메시지 발행을 위한 템플릿 */
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     /** Youtube 클라이언트 */
     private final YouTube youtubeclient;
 
+    /** 레디스 */
+    private final StringRedisTemplate redis;
+
     /** 조회할 카테고리 목록 */
     @Value("#{'${youtube.categories}'.split(',')}")
     private List<String> categories;
 
-    /** 조회할 채널 ID 목록 */
-    @Value("#{'${youtube.channelIds}'.split(',')}")
-    private List<String> channelIds;
-
     /**
-     * 전체 수집 스케줄러
-     * - fixedRate: application.yml의 youtube.fetch.rate 값 기준으로 실행
+     * 1시간마다 실행되는 메인 스케줄러
+     * 1) 카테고리 검색 (Redis + publishedAfter)
+     * 2) 채널 구독: 초기 전체 로딩 → RSS 증분 로딩
      */
     @Scheduled(fixedRateString = "${youtube.fetch.rate}")
     public void fetchAndPublishYoutube() {
+        // 1) 카테고리 기반 검색
         categories.forEach(this::fetchByCategory);
-        channelIds.forEach(this::fetchByChannel);
+
+        // 2) 채널 구독 로직
+        // 2-1) initialLoaded == false → 전체 로딩
+        List<ChannelSubscription> toInit = channelSubscriptionRepository.findByInitialLoadedFalse();
+        toInit.forEach(sub -> {
+            fetchAllByChannel(sub);
+            sub.setInitialLoaded(true);
+            channelSubscriptionRepository.save(sub);
+        });
+        // 2-2) initialLoaded == true → RSS 기반 증분 로딩
+        List<ChannelSubscription> toRss = channelSubscriptionRepository.findByInitialLoadedTrue();
+        toRss.forEach(this::fetchRssByChannel);
     }
 
-    /**
-     * 특정 카테고리를 키워드로 YouTube 검색 후 결과 발행
-     */
+    /** 1) 카테고리 검색: Redis 에 마지막 수집 시각 저장 */
     private void fetchByCategory(String category) {
-        log.info("Start fetching YOUTUBE for category={}", category);
+        String redisKey = "yt:lastFetched:cat:" + category;
+        Long lastTs = redis.opsForValue().get(redisKey) != null
+                ? Long.parseLong(redis.opsForValue().get(redisKey))
+                : Instant.now().minusSeconds(24 * 3600).toEpochMilli(); // 초기 24시간 전
+
+        log.info("[Category] '{}' since={}", category, Instant.ofEpochMilli(lastTs));
+
         try {
-            // 검색 요청 설정: snippet만 조회, 최대 N개(현재 1)
-            var request = youtubeclient.search()
+            var req = youtubeclient.search()
                     .list("snippet")
                     .setKey(apiKey)
                     .setQ("개발 " + category)
                     .setType("video")
-                    .setMaxResults(1L);
+                    .setOrder("date")
+                    .setMaxResults(10L)
+                    .setPublishedAfter(new DateTime(lastTs));
 
-            List<SearchResult> items = request.execute().getItems();
+            List<SearchResult> items = req.execute().getItems();
+            if (items.isEmpty()) {
+                log.info("  – No new videos for '{}'", category);
+                return;
+            }
 
-            // 각 검색 결과에 대해 공통 발행 로직 실행
+            // 신규 영상에 대해 발행
             items.forEach(r -> {
                 var sn = r.getSnippet();
+                Instant published = Instant.parse(sn.getPublishedAt().toStringRfc3339());
                 publishContent(
-                        /*category*/      "TBC",
-                        /*videoId*/       r.getId().getVideoId(),
-                        /*channelId*/     sn.getChannelId(),
-                        /*channelTitle*/  sn.getChannelTitle(),
-                        /*title*/         sn.getTitle(),
-                        /*thumbUrl*/      sn.getThumbnails().getHigh().getUrl(),
-                        /*publishedAt*/   Instant.parse(sn.getPublishedAt().toStringRfc3339())
+                        "TBC",
+                        r.getId().getVideoId(),
+                        sn.getChannelId(),
+                        sn.getChannelTitle(),
+                        sn.getTitle(),
+                        sn.getThumbnails().getHigh().getUrl(),
+                        published
                 );
             });
-            log.info("Completed fetching YOUTUBE for category={}, count={}", category, items.size());
+
+            // 최신 타임스탬프 갱신
+            long newest = items.stream()
+                    .map(r -> Instant.parse(r.getSnippet().getPublishedAt().toStringRfc3339())
+                            .toEpochMilli())
+                    .max(Comparator.naturalOrder())
+                    .get();
+            redis.opsForValue().set(redisKey, String.valueOf(newest));
+            log.info("  ✓ Updated lastFetched for '{}' → {}", category, Instant.ofEpochMilli(newest));
+
         } catch (Exception ex) {
-            log.error("Failed fetching/publishing YOUTUBE for category={}", category, ex);
+            log.error("Failed category fetch '{}': {}", category, ex.getMessage(), ex);
         }
     }
 
-    /**
-     * 특정 채널의 업로드 플레이리스트를 조회 후 모든 영상 발행
-     */
-    private void fetchByChannel(String channelId) {
-        log.info("Start fetching YOUTUBE uploads for channel={}", channelId);
+    /** 2-1) 채널 초기 전체 로딩: playlistItems.list + 페이징 순회 */
+    private void fetchAllByChannel(ChannelSubscription sub) {
+        String channelId = sub.getChannelId();
+        log.info("[FullLoad] channel={}", channelId);
+
         try {
-            // 채널 contentDetails 조회 → 업로드 플레이리스트 ID 얻기
-            var chReq   = youtubeclient.channels()
+            // 1) 업로드 전용 플레이리스트 ID 조회
+            var chResp = youtubeclient.channels()
                     .list("contentDetails")
                     .setKey(apiKey)
-                    .setId(channelId);
-            var chItems = chReq.execute().getItems();
-            if (chItems.isEmpty()) {
-                log.warn("No channel data for {}", channelId);
-                return;
-            }
-            String uploadsPlaylistId = chItems.get(0)
+                    .setId(channelId)
+                    .execute();
+            String uploadsPlaylistId = chResp.getItems()
+                    .get(0)
                     .getContentDetails()
                     .getRelatedPlaylists()
                     .getUploads();
 
-            // 플레이리스트 영상 조회 (최대 50개, 현재 50개)
-            var plReq = youtubeclient.playlistItems()
-                    .list("snippet,contentDetails")
-                    .setKey(apiKey)
-                    .setPlaylistId(uploadsPlaylistId)
-                    .setMaxResults(50L);
-            List<PlaylistItem> items = plReq.execute().getItems();
+            // 2) 페이지 단위로 순회
+            String pageToken = null;
+            do {
+                var plResp = youtubeclient.playlistItems()
+                        .list("snippet,contentDetails")
+                        .setKey(apiKey)
+                        .setPlaylistId(uploadsPlaylistId)
+                        .setMaxResults(50L)
+                        .setPageToken(pageToken)
+                        .execute();
 
-            // 각 검색 결과에 대해 공통 발행 로직 실행
-            items.forEach(pi -> {
-                var sn = pi.getSnippet();
-                String videoId = pi.getContentDetails().getVideoId();
-                publishContent(
-                        /*category*/      "TBC",
-                        /*videoId*/       videoId,
-                        /*channelId*/     channelId,
-                        /*channelTitle*/  sn.getChannelTitle(),
-                        /*title*/         sn.getTitle(),
-                        /*thumbUrl*/      sn.getThumbnails().getHigh().getUrl(),
-                        /*publishedAt*/   Instant.parse(sn.getPublishedAt().toStringRfc3339())
-                );
-            });
-            log.info("Completed fetching uploads for channel={}", channelId);
+                for (PlaylistItem pi : plResp.getItems()) {
+                    Instant published = Instant.parse(
+                            pi.getSnippet().getPublishedAt().toStringRfc3339());
+                    publishContent(
+                            "TBC",
+                            pi.getContentDetails().getVideoId(),
+                            pi.getSnippet().getChannelId(),
+                            pi.getSnippet().getChannelTitle(),
+                            pi.getSnippet().getTitle(),
+                            pi.getSnippet().getThumbnails().getHigh().getUrl(),
+                            published
+                    );
+                }
+
+                pageToken = plResp.getNextPageToken();
+            } while (pageToken != null);
+
         } catch (Exception ex) {
-            log.error("Failed fetching/publishing uploads for channel={}", channelId, ex);
+            log.error("Failed full-load for channel {}: {}", channelId, ex.getMessage(), ex);
         }
     }
 
-    /**
-     * 공통 발행 로직 메서드
-     * 1) 조회수 조회(fetchViewCount)
-     * 2) 채널 썸네일 조회(fetchChannelThumbnail)
-     * 3) ContentMessageDto 빌드
-     * 4) Kafka에 발행
-     *
-     * @param category          발행 키(파티션 기준)
-     * @param videoId           YouTube 영상 ID
-     * @param channelId         채널 ID
-     * @param channelTitle      채널명
-     * @param title             영상 제목
-     * @param thumbnailUrl      영상 썸네일 URL
-     * @param publishedAt       게시 일시 (RFC3339)
-     */
+    /** 2-2) 채널 RSS 증분 로딩: 최신 약 30개만 파싱 */
+    private void fetchRssByChannel(ChannelSubscription sub) {
+        String channelId = sub.getChannelId();
+        String feedUrl = "https://www.youtube.com/feeds/videos.xml?channel_id=" + channelId;
+        log.info("[RSSLoad] channel={} feed={}", channelId, feedUrl);
+
+        try (XmlReader reader = new XmlReader(new URL(feedUrl))) {
+            SyndFeed feed = new SyndFeedInput().build(reader);
+            for (SyndEntry entry : feed.getEntries()) {
+                String videoId = entry.getForeignMarkup().stream()
+                        .filter(n -> "videoId".equals(n.getName()))
+                        .map(n -> n.getValue())
+                        .findFirst()
+                        .orElse(null);
+                if (videoId == null) continue;
+
+                Instant published = entry.getPublishedDate() != null
+                        ? entry.getPublishedDate().toInstant()
+                        : Instant.now();
+
+                publishContent(
+                        "TBC",
+                        videoId,
+                        sub.getChannelId(),
+                        entry.getTitle(),
+                        entry.getTitle(),
+                        entry.getLink(),
+                        published
+                );
+            }
+        } catch (Exception ex) {
+            log.error("Failed RSS-load for channel {}: {}", channelId, ex.getMessage(), ex);
+        }
+    }
+
+    /** 공통 Kafka 발행 메서드 */
     private void publishContent(
             String category,
             String videoId,
@@ -158,13 +223,11 @@ public class YouTubeFetchService {
             String thumbnailUrl,
             Instant publishedAt
     ) {
-        // 1) 조회수 정보 가져오기
+        // 1) 조회수 조회
         Long viewCount = fetchViewCount(videoId);
-
-        // 2) 채널 썸네일 URL 가져오기
+        // 2) 채널 썸네일 조회
         String channelThumb = fetchChannelThumbnail(channelId);
 
-        // 3) DTO 생성
         ContentMessageDto msg = ContentMessageDto.builder()
                 .source("YOUTUBE")
                 .category(category)
@@ -177,20 +240,15 @@ public class YouTubeFetchService {
                 .viewCount(viewCount)
                 .build();
 
-        // 4) Kafka 토픽에 전송 (토픽명, 파티션 키, 메시지)
         kafkaTemplate.send(
-                KafkaProducerConfig.topicRawContent(),
+                KafkaProducerConfig.TOPIC_RAW_CONTENT,
                 category,
                 msg
         );
-        log.debug("Published YOUTUBE msg: category={}, videoId={}", category, videoId);
+        log.debug("▶ Published {} / {}", category, videoId);
     }
 
-    /**
-     * YouTube 영상의 통계 API를 통해 조회수를 가져오기
-     * @param videoId YouTube 영상 ID
-     * @return 조회수(Long) 또는 예외 시 null
-     */
+    /** 영상 조회수 조회 */
     private Long fetchViewCount(String videoId) {
         try {
             var statsReq = youtubeclient.videos()
@@ -199,28 +257,24 @@ public class YouTubeFetchService {
                     .setId(videoId);
             return statsReq.execute().getItems().stream()
                     .findFirst()
-                    .map(item -> item.getStatistics().getViewCount().longValue())
+                    .map(i -> i.getStatistics().getViewCount().longValue())
                     .orElse(null);
         } catch (Exception ex) {
-            log.warn("Failed to fetch statistics for video {}: {}", videoId, ex.getMessage());
+            log.warn("Failed to fetch viewCount for {}: {}", videoId, ex.getMessage());
             return null;
         }
     }
 
-    /**
-     * 채널 정보 API를 통해 채널의 썸네일 URL을 가져오기
-     * @param channelId YouTube 채널 ID
-     * @return 채널 썸네일 URL 또는 예외/미존재 시 null
-     */
+    /** 채널 썸네일 조회 */
     private String fetchChannelThumbnail(String channelId) {
         try {
-            var channelReq = youtubeclient.channels()
+            var chReq = youtubeclient.channels()
                     .list("snippet")
                     .setKey(apiKey)
                     .setId(channelId);
-            var list = channelReq.execute().getItems();
-            if (!list.isEmpty()) {
-                return list.get(0)
+            var items = chReq.execute().getItems();
+            if (!items.isEmpty()) {
+                return items.get(0)
                         .getSnippet()
                         .getThumbnails()
                         .getHigh()

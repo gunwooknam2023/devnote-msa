@@ -15,7 +15,11 @@ dependencies {
 	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 	// Kafka 프로듀서
 	implementation 'org.springframework.kafka:spring-kafka'
-
+	// JPA + MariaDB
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	runtimeOnly   'org.mariadb.jdbc:mariadb-java-client'
+	// Redis 캐시
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	// YouTube Data API Java Client
 	implementation 'com.google.apis:google-api-services-youtube:v3-rev222-1.25.0'
 	implementation 'com.google.api-client:google-api-client:1.34.1'
@@ -26,6 +30,7 @@ dependencies {
 
 	implementation 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
 	// 테스트
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

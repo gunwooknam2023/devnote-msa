@@ -24,6 +24,7 @@ import java.net.URL;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * YouTube 데이터를 주기적으로 수집하여 Kafka 에 발행
@@ -226,7 +227,7 @@ public class YouTubeFetchService {
         // 1) 조회수 조회
         Long viewCount = fetchViewCount(videoId);
         // 2) 채널 썸네일 조회
-        String channelThumb = fetchChannelThumbnail(channelId);
+        String channelThumb = ensureChannelThumbnail(channelId, channelTitle);
 
         ContentMessageDto msg = ContentMessageDto.builder()
                 .source("YOUTUBE")
@@ -248,6 +249,44 @@ public class YouTubeFetchService {
         log.debug("▶ Published {} / {}", category, videoId);
     }
 
+    /**
+     * 채널 썸네일 저장
+     * DB에 channelId가 없으면 새 구독 레코드 생성
+     * youtubeName에는 API에서 받은 channelTitle 넣고,
+     * initialLoaded는 true 상태로 저장,
+     * channelThumbnailUrl은 API에서 받아 저장
+     */
+    private String ensureChannelThumbnail(String channelId, String channelTitle) {
+        Optional<ChannelSubscription> opt = channelSubscriptionRepository.findByChannelId(channelId);
+        if(opt.isPresent() && opt.get().getChannelThumbnailUrl() != null) {
+            return opt.get().getChannelThumbnailUrl();
+        }
+        try {
+            // API 호출로 썸네일 정보 가져오기
+            var resp = youtubeclient.channels().list("snippet")
+                    .setKey(apiKey)
+                    .setId(channelId)
+                    .execute();
+            var snippet = resp.getItems().get(0).getSnippet();
+            String thumb = snippet.getThumbnails().getHigh().getUrl();
+
+            // DB에 새 레코드 생성 또는 기존 업데이트
+            ChannelSubscription sub = opt.orElseGet(() ->
+                    ChannelSubscription.builder()
+                            .youtubeName(channelTitle)
+                            .channelId(channelId)
+                            .initialLoaded(true)
+                            .build()
+            );
+            sub.setChannelThumbnailUrl(thumb);
+            channelSubscriptionRepository.save(sub);
+            return thumb;
+        } catch (Exception ex) {
+            log.warn("Failed to fetch & save thumbnail for {}: {}", channelId, ex.getMessage());
+            return null;
+        }
+    }
+
     /** 영상 조회수 조회 */
     private Long fetchViewCount(String videoId) {
         try {
@@ -263,26 +302,5 @@ public class YouTubeFetchService {
             log.warn("Failed to fetch viewCount for {}: {}", videoId, ex.getMessage());
             return null;
         }
-    }
-
-    /** 채널 썸네일 조회 */
-    private String fetchChannelThumbnail(String channelId) {
-        try {
-            var chReq = youtubeclient.channels()
-                    .list("snippet")
-                    .setKey(apiKey)
-                    .setId(channelId);
-            var items = chReq.execute().getItems();
-            if (!items.isEmpty()) {
-                return items.get(0)
-                        .getSnippet()
-                        .getThumbnails()
-                        .getHigh()
-                        .getUrl();
-            }
-        } catch (Exception ex) {
-            log.warn("Failed to fetch channel thumbnail for {}: {}", channelId, ex.getMessage());
-        }
-        return null;
     }
 }

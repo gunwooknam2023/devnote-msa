@@ -26,6 +26,10 @@ public class ChannelSubscription {
     @Column(nullable = false, unique = true, length = 50)
     private String channelId;
 
+    /** 채널 썸네일 */
+    @Column(length = 512)
+    private String channelThumbnailUrl;
+
     /** 초기 전체 로딩 완료 여부 */
     @Column(nullable = false)
     private boolean initialLoaded;

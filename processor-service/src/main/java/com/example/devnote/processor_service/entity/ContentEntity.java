@@ -35,8 +35,11 @@ public class ContentEntity {
     @Column(length = 512)
     private String channelThumbnailUrl;
 
-    private Long viewCount;
+    @Column(length = 20)
+    private String videoForm;
 
+    private Long viewCount;
+    private Long durationSeconds;
     private String thumbnailUrl;
     private Instant publishedAt;
     private Instant createdAt;

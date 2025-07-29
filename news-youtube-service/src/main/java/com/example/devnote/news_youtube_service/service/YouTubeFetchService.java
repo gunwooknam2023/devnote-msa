@@ -6,8 +6,7 @@ import com.example.devnote.news_youtube_service.entity.ChannelSubscription;
 import com.example.devnote.news_youtube_service.repository.ChannelSubscriptionRepository;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.youtube.YouTube;
-import com.google.api.services.youtube.model.PlaylistItem;
-import com.google.api.services.youtube.model.SearchResult;
+import com.google.api.services.youtube.model.*;
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedInput;
@@ -21,6 +20,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.net.URL;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -224,8 +224,12 @@ public class YouTubeFetchService {
             String thumbnailUrl,
             Instant publishedAt
     ) {
-        // 1) 조회수 조회
-        Long viewCount = fetchViewCount(videoId);
+        // 1) 영상 조회수 + 영상 길이 조회
+        VideoStats stats = fetchVideoStats(videoId);
+        Long viewCount = stats.viewCount();
+        long durationSec = stats.duration() != null ? stats.duration().getSeconds() : 0;
+        String form = (stats.duration() != null && stats.duration().getSeconds() <= 60) ? "SHORTS" : "LONGFORM";
+
         // 2) 채널 썸네일 조회
         String channelThumb = ensureChannelThumbnail(channelId, channelTitle);
 
@@ -237,8 +241,10 @@ public class YouTubeFetchService {
                 .thumbnailUrl(thumbnailUrl)
                 .publishedAt(publishedAt)
                 .channelTitle(channelTitle)
-                .channelThumbanilUrl(channelThumb)
+                .channelThumbnailUrl(channelThumb)
                 .viewCount(viewCount)
+                .durationSeconds(durationSec)
+                .videoForm(form)
                 .build();
 
         kafkaTemplate.send(
@@ -287,20 +293,34 @@ public class YouTubeFetchService {
         }
     }
 
-    /** 영상 조회수 조회 */
-    private Long fetchViewCount(String videoId) {
+    /** 영상 조회수 + 영상 길이 조회 */
+    private record VideoStats(Long viewCount, Duration duration) {}
+    private VideoStats fetchVideoStats(String videoId) {
         try {
-            var statsReq = youtubeclient.videos()
-                    .list("statistics")
+            // 1) statistics,contentDetails 요청
+            var req = youtubeclient.videos()
+                    .list("statistics,contentDetails")
                     .setKey(apiKey)
                     .setId(videoId);
-            return statsReq.execute().getItems().stream()
-                    .findFirst()
-                    .map(i -> i.getStatistics().getViewCount().longValue())
-                    .orElse(null);
+
+            // 2) API 호출 및 첫 번째 결과 추출
+            Video item = req.execute().getItems().stream().findFirst().orElse(null);
+
+            // 3) 결과가 없으면 null 필드로 VideoStats 생성
+            if (item == null) return new VideoStats(null, null);
+
+            // 4) 조회수 가져오기
+            VideoStatistics st = item.getStatistics();
+            VideoContentDetails cd = item.getContentDetails();
+
+            // 5) duration 문자열 파싱
+            Duration dur = Duration.parse(cd.getDuration());
+
+            // 6) VideoStats 객체에 담아 반환
+            return new VideoStats(st.getViewCount().longValue(), dur);
         } catch (Exception ex) {
-            log.warn("Failed to fetch viewCount for {}: {}", videoId, ex.getMessage());
-            return null;
+            log.warn("Failed to fetch stats for {}: {}", videoId, ex.getMessage());
+            return new VideoStats(null, null);
         }
     }
 }

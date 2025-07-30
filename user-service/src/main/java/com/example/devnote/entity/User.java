@@ -4,10 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 /**
- * 사용자
+ * OAuth2 사용자 엔티티
  */
 @Entity
-@Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,17 +18,16 @@ public class User {
     private Long id;
 
     @Column(nullable = false)
-    private String provider;    // 구글, 네이버, 카카오
+    private String provider;
 
     @Column(nullable = false)
-    private String providerId;  // 소셜 ID
+    private String providerId;
 
     @Column(nullable = false, unique = true)
-    private String email;       // 이메일
+    private String email;
 
+    @Column(nullable = false)
     private String name;
-    private String imageUrl;
 
-    @Column(length = 500)
-    private String refreshToken;
+    private String picture;
 }

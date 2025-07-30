@@ -23,6 +23,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final UserRepository userRepository;
     private final ObjectMapper mapper = new ObjectMapper();
 
+    /** OAuth2 로그인 성공 후 호출 */
     @Override
     public void onAuthenticationSuccess(HttpServletRequest req, HttpServletResponse res, Authentication auth)
             throws IOException {

@@ -28,6 +28,7 @@ public class TokenService {
         key = Keys.hmacShaKeyFor(jwtConfig.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
+    /** 엑세스 토큰 생성 및 저장 */
     public String generateAccessToken(User user) {
         return Jwts.builder()
                 .setSubject(user.getId().toString())
@@ -38,6 +39,7 @@ public class TokenService {
                 .compact();
     }
 
+    /** 리프레시 토큰 생성 및 저장 */
     public String generateRefreshToken(User user) {
         String refreshToken = Jwts.builder()
                 .setSubject(user.getId().toString())
@@ -51,6 +53,7 @@ public class TokenService {
         return refreshToken;
     }
 
+    /** 토큰 유효성 검증 */
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
@@ -60,6 +63,7 @@ public class TokenService {
         }
     }
 
+    /** 토큰에서 userId 추출 */
     public Long getUserIdFromToken(String token) {
         Claims claims = Jwts.parserBuilder()
                 .setSigningKey(key).build()

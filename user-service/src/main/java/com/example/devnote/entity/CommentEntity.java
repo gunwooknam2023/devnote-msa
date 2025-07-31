@@ -26,12 +26,15 @@ public class CommentEntity {
     @Column(nullable = false)
     private Long contentId;
 
-    /** 작성자 이름 */
+    /** 회원 댓글일 때 채워지는 회원 ID (anonymous 면 null) */
+    private Long userId;
+
+    /** 댓글 작성자 표시명 (회원이면 DB의 name, 비회원이면 입력된 username) */
     @Column(nullable = false, length = 50)
     private String username;
 
-    /** 비밀번호 해시(BCrypt) */
-    @Column(nullable = false)
+    /** 비회원 댓글일 때만 채워짐 (회원 댓글은 null) */
+    @Column
     private String passwordHash;
 
     /** 댓글 본문 */

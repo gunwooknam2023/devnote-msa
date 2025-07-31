@@ -11,12 +11,10 @@ public class CommentRequestDto {
 
     private Long parentId;
 
-    @NotBlank(message = "username is required")
-    private String username;
-
-    @NotBlank(message = "password is required")
-    private String password;
-
     @NotBlank(message = "content is required")
     private String content;
+
+    /** 비회원 댓글용 */
+    private String username;
+    private String password;
 }

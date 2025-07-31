@@ -6,9 +6,11 @@ import com.example.devnote.news_youtube_service.entity.ChannelSubscription;
 import com.example.devnote.news_youtube_service.repository.ChannelSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -46,6 +48,26 @@ public class ChannelSubscriptionController {
                         .message("Fetched subscriptions")
                         .statusCode(200)
                         .data(list)
+                        .build()
+        );
+    }
+
+    /** 단일 채널 조회 (찜 기능용 존재 확인) */
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponseDto<ChannelSubscription>> getById(
+            @PathVariable Long id
+    ) {
+        ChannelSubscription sub = channelSubscriptionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "ChannelSubscription not found: " + id
+                ));
+
+        return ResponseEntity.ok(
+                ApiResponseDto.<ChannelSubscription>builder()
+                        .message("Fetched channel")
+                        .statusCode(HttpStatus.OK.value())
+                        .data(sub)
                         .build()
         );
     }

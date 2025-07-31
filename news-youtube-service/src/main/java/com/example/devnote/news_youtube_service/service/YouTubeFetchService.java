@@ -187,7 +187,9 @@ public class YouTubeFetchService {
 
         try (XmlReader reader = new XmlReader(new URL(feedUrl))) {
             SyndFeed feed = new SyndFeedInput().build(reader);
+
             for (SyndEntry entry : feed.getEntries()) {
+                // 1) videoId 추출
                 String videoId = entry.getForeignMarkup().stream()
                         .filter(n -> "videoId".equals(n.getName()))
                         .map(n -> n.getValue())
@@ -195,18 +197,34 @@ public class YouTubeFetchService {
                         .orElse(null);
                 if (videoId == null) continue;
 
-                Instant published = entry.getPublishedDate() != null
+                // 2) YouTube Data API 로 Snippet+Statistics 조회
+                var resp = youtubeclient.videos()
+                        .list("snippet")
+                        .setKey(apiKey)
+                        .setId(videoId)
+                        .execute();
+
+                if (resp.getItems().isEmpty()) continue;
+                var video = resp.getItems().get(0);
+                var sn = video.getSnippet();
+
+                // 3) 필요한 정보 추출
+                String channelTitle = sn.getChannelTitle();
+                String title        = sn.getTitle();
+                String thumbnailUrl = sn.getThumbnails().getHigh().getUrl();
+                Instant publishedAt = entry.getPublishedDate() != null
                         ? entry.getPublishedDate().toInstant()
                         : Instant.now();
 
+                // 4) Kafka 발행
                 publishContent(
                         "TBC",
                         videoId,
-                        sub.getChannelId(),
-                        entry.getTitle(),
-                        entry.getTitle(),
-                        entry.getLink(),
-                        published
+                        channelId,
+                        channelTitle,
+                        title,
+                        thumbnailUrl,
+                        publishedAt
                 );
             }
         } catch (Exception ex) {

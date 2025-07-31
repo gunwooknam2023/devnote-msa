@@ -1,11 +1,8 @@
-package com.example.devnote.processor_service.dto;
+package com.example.devnote.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
-/**
- * 댓글 수정 DTO
- */
 @Data
 public class CommentUpdateDto {
     @NotBlank(message = "password is required")

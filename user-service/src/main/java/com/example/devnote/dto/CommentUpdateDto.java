@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 public class CommentUpdateDto {
-    @NotBlank(message = "password is required")
+    /** 비회원 댓글 수정 시 필요 */
     private String password;
 
     @NotBlank(message = "content is required")

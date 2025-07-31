@@ -22,54 +22,62 @@ public class CommentController {
     /** 댓글 생성 */
     @PostMapping
     public ResponseEntity<ApiResponseDto<CommentResponseDto>> create(
-            @Valid @RequestBody CommentRequestDto req) {
+            @Valid @RequestBody CommentRequestDto req
+    ) {
         CommentResponseDto dto = commentService.createComment(req);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponseDto.<CommentResponseDto>builder()
-                        .message("Comment created")
-                        .statusCode(HttpStatus.CREATED.value())
-                        .data(dto)
-                        .build());
+        ApiResponseDto<CommentResponseDto> body = ApiResponseDto
+                .<CommentResponseDto>builder()
+                .message("Comment created")
+                .statusCode(HttpStatus.CREATED.value())
+                .data(dto)
+                .build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     /** 특정 콘텐츠 댓글 전체 조회 */
     @GetMapping
     public ResponseEntity<ApiResponseDto<List<CommentResponseDto>>> list(
-            @RequestParam Long contentId) {
+            @RequestParam Long contentId
+    ) {
         List<CommentResponseDto> list = commentService.listCommentsByContent(contentId);
-        return ResponseEntity.ok(
-                ApiResponseDto.<List<CommentResponseDto>>builder()
-                        .message("Fetched comments")
-                        .statusCode(HttpStatus.OK.value())
-                        .data(list)
-                        .build());
+        ApiResponseDto<List<CommentResponseDto>> body = ApiResponseDto
+                .<List<CommentResponseDto>>builder()
+                .message("Fetched comments")
+                .statusCode(HttpStatus.OK.value())
+                .data(list)
+                .build();
+        return ResponseEntity.ok(body);
     }
 
     /** 댓글 수정 */
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponseDto<CommentResponseDto>> update(
             @PathVariable Long id,
-            @Valid @RequestBody CommentUpdateDto req) {
+            @Valid @RequestBody CommentUpdateDto req
+    ) {
         CommentResponseDto dto = commentService.updateComment(id, req);
-        return ResponseEntity.ok(
-                ApiResponseDto.<CommentResponseDto>builder()
-                        .message("Comment updated")
-                        .statusCode(HttpStatus.OK.value())
-                        .data(dto)
-                        .build());
+        ApiResponseDto<CommentResponseDto> body = ApiResponseDto
+                .<CommentResponseDto>builder()
+                .message("Comment updated")
+                .statusCode(HttpStatus.OK.value())
+                .data(dto)
+                .build();
+        return ResponseEntity.ok(body);
     }
 
     /** 댓글 삭제 */
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponseDto<Void>> delete(
             @PathVariable Long id,
-            @RequestParam String password) {
+            @RequestParam(required = false) String password
+    ) {
         commentService.deleteComment(id, password);
-        return ResponseEntity.ok(
-                ApiResponseDto.<Void>builder()
-                        .message("Comment deleted")
-                        .statusCode(HttpStatus.OK.value())
-                        .data(null)
-                        .build());
+        ApiResponseDto<Void> body = ApiResponseDto
+                .<Void>builder()
+                .message("Comment deleted")
+                .statusCode(HttpStatus.OK.value())
+                .data(null)
+                .build();
+        return ResponseEntity.ok(body);
     }
 }

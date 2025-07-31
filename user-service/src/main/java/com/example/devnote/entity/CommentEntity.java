@@ -1,4 +1,4 @@
-package com.example.devnote.processor_service.entity;
+package com.example.devnote.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -7,9 +7,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 
-/**
- * 게시글에 달린 비회원 댓글
- */
 @Entity
 @Table(name = "comments")
 @Getter
@@ -22,30 +19,28 @@ public class CommentEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 대댓글이 아니라면 parentId = null */
+    /** 대댓글일 땐 parentId, 아니면 null */
     private Long parentId;
 
-    /** 댓글이 달린 콘텐츠(ID) */
+    /** processor-service 의 content.id */
     @Column(nullable = false)
     private Long contentId;
 
-    /** 작성자 이름(임의 입력) */
+    /** 작성자 이름 */
     @Column(nullable = false, length = 50)
     private String username;
 
-    /** 비회원용 비밀번호 해시 */
+    /** 비밀번호 해시(BCrypt) */
     @Column(nullable = false)
     private String passwordHash;
 
-    /** 댓글 내용 */
+    /** 댓글 본문 */
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    /** 생성 시각 자동 저장 */
     @CreationTimestamp
     private Instant createdAt;
 
-    /** 수정 시각 자동 갱신 */
     @UpdateTimestamp
     private Instant updatedAt;
 }

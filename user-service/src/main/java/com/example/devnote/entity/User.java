@@ -30,4 +30,7 @@ public class User {
     private String name;
 
     private String picture;
+
+    @Column(length = 500)
+    private String selfIntroduction;
 }

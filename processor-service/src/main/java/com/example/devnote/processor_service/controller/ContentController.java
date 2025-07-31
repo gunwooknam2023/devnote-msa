@@ -7,11 +7,9 @@ import com.example.devnote.processor_service.service.ContentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.Response;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 콘텐츠 조회용 REST API
@@ -68,6 +66,21 @@ public class ContentController {
                         .message("OK")
                         .statusCode(200)
                         .data("processor-service is up")
+                        .build()
+        );
+    }
+
+    /** 단일 콘텐츠 조회 (찜 기능용 존재 확인) */
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponseDto<ContentDto>> getById(
+            @PathVariable Long id
+    ) {
+        ContentDto dto = contentService.getContentById(id);  // 서비스 레이어에서 NoSuchElementException 처리
+        return ResponseEntity.ok(
+                ApiResponseDto.<ContentDto>builder()
+                        .message("Fetched content")
+                        .statusCode(HttpStatus.OK.value())
+                        .data(dto)
                         .build()
         );
     }

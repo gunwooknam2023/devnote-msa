@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
+
 import jakarta.persistence.criteria.Predicate;
 
 /**
@@ -171,5 +173,11 @@ public class ContentService {
                 .videoForm(e.getVideoForm())
                 .createdAt(e.getCreatedAt())
                 .build();
+    }
+
+    public ContentDto getContentById(Long id) {
+        ContentEntity ent = contentRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Content not found: " + id));
+        return toDto(ent);
     }
 }

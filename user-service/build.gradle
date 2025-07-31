@@ -43,6 +43,9 @@ dependencies {
 	// Eureka Client
 	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 
+	// Webflux
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
 	// 테스트
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'

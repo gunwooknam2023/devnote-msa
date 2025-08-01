@@ -16,7 +16,9 @@ public class CommentResponseDto {
     private Long id;
     private Long parentId;
     private Long contentId;
+    private Long userId;
     private String username;
+    private String userPicture;
     private String content;
     private Instant createdAt;
     private Instant updatedAt;

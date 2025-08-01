@@ -50,6 +50,7 @@ public class CommentService {
         Long userId = null;
         String username;
         String passwordHash = null;
+        String userPicture = null;
 
         if (auth != null
                 && auth.isAuthenticated()
@@ -60,6 +61,7 @@ public class CommentService {
                             HttpStatus.UNAUTHORIZED, "User not found: " + email));
             userId = u.getId();
             username = u.getName();
+            userPicture = u.getPicture();
         } else {
             if (req.getUsername() == null || req.getPassword() == null) {
                 throw new ResponseStatusException(
@@ -75,6 +77,7 @@ public class CommentService {
                 .parentId(req.getParentId())
                 .userId(userId)
                 .username(username)
+                .picture(userPicture)
                 .passwordHash(passwordHash)
                 .content(req.getContent())
                 .build();
@@ -191,7 +194,9 @@ public class CommentService {
                 .id(e.getId())
                 .parentId(e.getParentId())
                 .contentId(e.getContentId())
+                .userId(e.getUserId())
                 .username(e.getUsername())
+                .userPicture(e.getPicture())
                 .content(e.getContent())
                 .createdAt(e.getCreatedAt())
                 .updatedAt(e.getUpdatedAt())

@@ -33,6 +33,10 @@ public class CommentEntity {
     @Column(nullable = false, length = 50)
     private String username;
 
+    /** 댓글 작성자 프로필 사진 (회원이면 DB의 picture, 비회원이면 null) */
+    @Column
+    private String picture;
+
     /** 비회원 댓글일 때만 채워짐 (회원 댓글은 null) */
     @Column
     private String passwordHash;

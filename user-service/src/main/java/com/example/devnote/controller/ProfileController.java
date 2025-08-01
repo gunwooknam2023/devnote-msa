@@ -42,7 +42,7 @@ public class ProfileController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found: " + email));
 
-        UserInfoDto dto = new UserInfoDto(user.getName(), user.getPicture());
+        UserInfoDto dto = new UserInfoDto(user.getId(), user.getName(), user.getPicture());
         return ResponseEntity.ok(
                 ApiResponseDto.<UserInfoDto>builder()
                         .message("Fetched user")

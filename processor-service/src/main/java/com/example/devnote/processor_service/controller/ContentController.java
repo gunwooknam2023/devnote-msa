@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class ContentController {
     private final ContentService contentService;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     /**
      * 페이지네이션, 필터, 정렬 적용된 콘텐츠 리스트 조회
@@ -81,6 +83,29 @@ public class ContentController {
                         .message("Fetched content")
                         .statusCode(HttpStatus.OK.value())
                         .data(dto)
+                        .build()
+        );
+    }
+
+    /**
+     * 콘텐츠 삭제 + Kafka로 삭제 이벤트 발행
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponseDto<Void>> deleteContent(@PathVariable Long id) {
+        // 1) 존재 검증
+        contentService.verifyExists(id);
+
+        // 2) DB에서 삭제
+        contentService.deleteById(id);
+
+        // 3) Kafka로 삭제 이벤트 전송 (key: 콘텐츠 ID)
+        kafkaTemplate.send("content.deleted", String.valueOf(id));
+
+        return ResponseEntity.ok(
+                ApiResponseDto.<Void>builder()
+                        .message("Content deleted and event published")
+                        .statusCode(200)
+                        .data(null)
                         .build()
         );
     }

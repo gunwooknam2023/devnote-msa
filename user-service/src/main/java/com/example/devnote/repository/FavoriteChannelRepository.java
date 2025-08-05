@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface FavoriteChannelRepository extends JpaRepository<FavoriteChannel, Long> {
     Optional<FavoriteChannel> findByUserIdAndChannelSubscriptionId(Long userId, Long chSubId);
     List<FavoriteChannel> findByUserId(Long userId);
+    void deleteByChannelSubscriptionId(Long channelSubscriptionId);
 }

@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface FavoriteContentRepository extends JpaRepository<FavoriteContent, Long> {
     Optional<FavoriteContent> findByUserIdAndContentId(Long userId, Long contentId);
     List<FavoriteContent> findByUserId(Long userId);
+    void deleteByContentId(Long contentId);
 }

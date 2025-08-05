@@ -19,6 +19,7 @@ import java.util.Map;
 @Configuration
 public class KafkaProducerConfig {
     public static final String TOPIC_RAW_CONTENT = "raw.content";
+    public static final String TOPIC_CHANNEL_DELETED = "channel.deleted";
 
     /**
      * ProducerFactory 빈 생성

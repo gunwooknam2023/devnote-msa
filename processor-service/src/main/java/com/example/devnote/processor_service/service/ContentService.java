@@ -5,6 +5,7 @@ import com.example.devnote.processor_service.dto.ContentMessageDto;
 import com.example.devnote.processor_service.dto.PageResponseDto;
 import com.example.devnote.processor_service.entity.ContentEntity;
 import com.example.devnote.processor_service.repository.ContentRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -13,14 +14,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.NoSuchElementException;
-
-import jakarta.persistence.criteria.Predicate;
 
 /**
  * 비즈니스 로직 수행용 서비스
@@ -176,8 +176,36 @@ public class ContentService {
     }
 
     public ContentDto getContentById(Long id) {
-        ContentEntity ent = contentRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Content not found: " + id));
-        return toDto(ent);
+        return contentRepository.findById(id)
+                .map(this::toDto)
+                .orElseThrow(() -> {
+                    log.warn("Content not found: {}", id);
+                    return new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Content not found: " + id
+                    );
+                });
+    }
+
+    /**
+     * 콘텐츠 존재 여부 (반환 타입 void)
+     */
+    public void verifyExists(Long id) {
+        boolean exists = contentRepository.existsById(id);
+        if (!exists) {
+            log.warn("Attempt to delete non-existent content: {}", id);
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Content not found: " + id
+            );
+        }
+    }
+
+    /**
+     * 콘텐츠 삭제
+     */
+    public void deleteById(Long id) {
+        contentRepository.deleteById(id);
+        log.info("Content deleted: {}", id);
     }
 }

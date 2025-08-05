@@ -1,5 +1,6 @@
 package com.example.devnote.news_youtube_service.controller;
 
+import com.example.devnote.news_youtube_service.config.KafkaProducerConfig;
 import com.example.devnote.news_youtube_service.dto.ApiResponseDto;
 import com.example.devnote.news_youtube_service.dto.ChannelSubscriptionRequestDto;
 import com.example.devnote.news_youtube_service.entity.ChannelSubscription;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -19,6 +21,7 @@ import java.util.List;
 @RequestMapping("/api/v1/channels")
 public class ChannelSubscriptionController {
     private final ChannelSubscriptionRepository channelSubscriptionRepository;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     /** 신규 채널 등록 (초기Loaded=false) */
     @PostMapping
@@ -68,6 +71,33 @@ public class ChannelSubscriptionController {
                         .message("Fetched channel")
                         .statusCode(HttpStatus.OK.value())
                         .data(sub)
+                        .build()
+        );
+    }
+
+    /**
+     * 채널 구독 정보 삭제 + Kafka로 삭제 이벤트 발행
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponseDto<Void>> deleteChannel(@PathVariable Long id) {
+        ChannelSubscription sub = channelSubscriptionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "ChannelSubscription not found: " + id));
+
+        // 1) DB에서 삭제
+        channelSubscriptionRepository.delete(sub);
+
+        // 2) Kafka로 삭제 이벤트 전송 (key: 채널 ID)
+        kafkaTemplate.send(
+                KafkaProducerConfig.TOPIC_CHANNEL_DELETED,
+                String.valueOf(id)
+        );
+
+        return ResponseEntity.ok(
+                ApiResponseDto.<Void>builder()
+                        .message("Channel deleted and event published")
+                        .statusCode(HttpStatus.OK.value())
+                        .data(null)
                         .build()
         );
     }

@@ -21,6 +21,7 @@ public class CommentResponseDto {
     private String userPicture;
     private String content;
     private String contentTitle;
+    private String contentSource;
     private Instant createdAt;
     private Instant updatedAt;
     private List<CommentResponseDto> replies;

@@ -107,14 +107,15 @@ public class UserProfileService {
                 .map(this::toCommentDto)
                 .toList();
 
-        // 콘텐츠 제목 조회
-        String contentTitle = apiGatewayClient.get()
+        // 2) 콘텐츠 정보 조회 (제목 + 소스)
+        ApiResponseDto<ContentDto> cr = apiGatewayClient.get()
                 .uri("/api/v1/contents/{id}", e.getContentId())
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ContentDto>>() {})
-                .block()
-                .getData()
-                .getTitle();
+                .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ContentDto>>() {
+                })
+                .block();
+        String contentTitle = cr.getData().getTitle();
+        String contentSource = cr.getData().getSource();
 
         // 유저 프로필 사진 조회
         User user = userRepo.findById(e.getUserId()).orElseThrow();
@@ -131,6 +132,7 @@ public class UserProfileService {
                 .updatedAt(e.getUpdatedAt())
                 .replies(replies)
                 .contentTitle(contentTitle)
+                .contentSource(contentSource)
                 .build();
     }
 }

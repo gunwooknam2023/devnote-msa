@@ -20,6 +20,7 @@ public class CommentResponseDto {
     private String username;
     private String userPicture;
     private String content;
+    private String contentTitle;
     private Instant createdAt;
     private Instant updatedAt;
     private List<CommentResponseDto> replies;

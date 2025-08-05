@@ -38,6 +38,9 @@ public class ContentEntity {
     @Column(length = 20)
     private String videoForm;
 
+    @Column(name = "subscriber_count")
+    private Long subscriberCount;
+
     private Long viewCount;
     private Long durationSeconds;
     private String thumbnailUrl;

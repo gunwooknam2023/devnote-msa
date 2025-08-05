@@ -29,4 +29,5 @@ public class ContentMessageDto {
     private Long viewCount;             // 영상 조회수
     private Long durationSeconds;       // 영상 길이(초)
     private String videoForm;           // "SHORTS" or "LONGFORM"
+    private Long subscriberCount;       // 구독자 수
 }

@@ -65,6 +65,7 @@ public class ContentService {
                     .viewCount(msg.getViewCount())
                     .durationSeconds(msg.getDurationSeconds())
                     .videoForm(msg.getVideoForm())
+                    .subscriberCount(msg.getSubscriberCount())
                     .build();
             ent = contentRepository.save(ent);
             log.info("Saved ContentEntity id={}", ent.getId());
@@ -171,6 +172,7 @@ public class ContentService {
                 .viewCount(e.getViewCount())
                 .durationSeconds(e.getDurationSeconds())
                 .videoForm(e.getVideoForm())
+                .subscriberCount(e.getSubscriberCount())
                 .createdAt(e.getCreatedAt())
                 .build();
     }

@@ -251,6 +251,12 @@ public class YouTubeFetchService {
         // 2) 채널 썸네일 조회
         String channelThumb = ensureChannelThumbnail(channelId, channelTitle);
 
+        // 3) 채널 구독자 수 조회
+        Long subscriberCount = channelSubscriptionRepository
+                .findByChannelId(channelId)
+                .map(ChannelSubscription::getSubscriberCount)
+                .orElse(0L);
+
         ContentMessageDto msg = ContentMessageDto.builder()
                 .source("YOUTUBE")
                 .category(category)
@@ -263,6 +269,7 @@ public class YouTubeFetchService {
                 .viewCount(viewCount)
                 .durationSeconds(durationSec)
                 .videoForm(form)
+                .subscriberCount(subscriberCount)
                 .build();
 
         kafkaTemplate.send(

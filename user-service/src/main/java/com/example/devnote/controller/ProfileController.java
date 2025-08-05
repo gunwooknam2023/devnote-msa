@@ -1,9 +1,6 @@
 package com.example.devnote.controller;
 
-import com.example.devnote.dto.ApiResponseDto;
-import com.example.devnote.dto.ProfileRequestDto;
-import com.example.devnote.dto.ProfileResponseDto;
-import com.example.devnote.dto.UserInfoDto;
+import com.example.devnote.dto.*;
 import com.example.devnote.entity.User;
 import com.example.devnote.repository.UserRepository;
 import com.example.devnote.service.UserProfileService;
@@ -20,6 +17,20 @@ import org.springframework.web.bind.annotation.*;
 public class ProfileController {
     private final UserRepository userRepository;
     private final UserProfileService profileService;
+
+    /** 프로필 페이지 정보 반환 (찜 영상, 뉴스, 채널 / 작성한 댓글 목록) */
+    @GetMapping("/dashboard")
+    public ResponseEntity<ApiResponseDto<DashboardDto>> getDashboard() {
+        DashboardDto dto = profileService.getDashboard();
+
+        return ResponseEntity.ok(
+                ApiResponseDto.<DashboardDto> builder()
+                        .message("Fetched user dashboard")
+                        .statusCode(200)
+                        .data(dto)
+                        .build()
+        );
+    }
 
     /** 자기소개 수정 */
     @PutMapping("/me/profile")

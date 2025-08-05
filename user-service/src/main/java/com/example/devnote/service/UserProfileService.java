@@ -107,6 +107,15 @@ public class UserProfileService {
                 .map(this::toCommentDto)
                 .toList();
 
+        // 콘텐츠 제목 조회
+        String contentTitle = apiGatewayClient.get()
+                .uri("/api/v1/contents/{id}", e.getContentId())
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ContentDto>>() {})
+                .block()
+                .getData()
+                .getTitle();
+
         // 유저 프로필 사진 조회
         User user = userRepo.findById(e.getUserId()).orElseThrow();
 
@@ -121,6 +130,7 @@ public class UserProfileService {
                 .createdAt(e.getCreatedAt())
                 .updatedAt(e.getUpdatedAt())
                 .replies(replies)
+                .contentTitle(contentTitle)
                 .build();
     }
 }

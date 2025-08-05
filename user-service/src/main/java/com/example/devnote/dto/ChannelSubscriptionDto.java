@@ -27,4 +27,7 @@ public class ChannelSubscriptionDto {
 
     /** 초기 전체 로딩 완료 여부 */
     private boolean initialLoaded;
+
+    /** 구독자 수 */
+    private Long subscriberCount;
 }

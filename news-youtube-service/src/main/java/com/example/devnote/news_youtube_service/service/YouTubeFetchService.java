@@ -287,12 +287,20 @@ public class YouTubeFetchService {
         }
         try {
             // API 호출로 썸네일 정보 가져오기
-            var resp = youtubeclient.channels().list("snippet")
+            var resp = youtubeclient.channels()
+                    .list("snippet, statistics")
                     .setKey(apiKey)
                     .setId(channelId)
                     .execute();
-            var snippet = resp.getItems().get(0).getSnippet();
-            String thumb = snippet.getThumbnails().getHigh().getUrl();
+           // 썸네일
+           var item = resp.getItems().get(0);
+           var snippet = item.getSnippet();
+           String thumb = snippet.getThumbnails().getHigh().getUrl();
+
+
+           var stats = item.getStatistics();
+           Long subsCount = stats.getSubscriberCount() != null
+                   ? stats.getSubscriberCount().longValue() : 0L;
 
             // DB에 새 레코드 생성 또는 기존 업데이트
             ChannelSubscription sub = opt.orElseGet(() ->
@@ -300,8 +308,11 @@ public class YouTubeFetchService {
                             .youtubeName(channelTitle)
                             .channelId(channelId)
                             .initialLoaded(true)
+                            .channelThumbnailUrl(thumb)
+                            .subscriberCount(subsCount)
                             .build()
             );
+            sub.setSubscriberCount(subsCount);
             sub.setChannelThumbnailUrl(thumb);
             channelSubscriptionRepository.save(sub);
             return thumb;

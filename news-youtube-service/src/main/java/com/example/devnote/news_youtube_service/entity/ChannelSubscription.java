@@ -30,6 +30,10 @@ public class ChannelSubscription {
     @Column(length = 512)
     private String channelThumbnailUrl;
 
+    /** 구독자 수 */
+    @Column(name = "subscriber_count")
+    private Long subscriberCount;
+
     /** 초기 전체 로딩 완료 여부 */
     @Column(nullable = false)
     private boolean initialLoaded;

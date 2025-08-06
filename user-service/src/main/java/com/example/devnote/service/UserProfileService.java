@@ -116,6 +116,7 @@ public class UserProfileService {
                 .block();
         String contentTitle = cr.getData().getTitle();
         String contentSource = cr.getData().getSource();
+        String contentLink   = cr.getData().getLink();
 
         // 유저 프로필 사진 조회
         User user = userRepo.findById(e.getUserId()).orElseThrow();
@@ -133,6 +134,7 @@ public class UserProfileService {
                 .replies(replies)
                 .contentTitle(contentTitle)
                 .contentSource(contentSource)
+                .contentLink(contentLink)
                 .build();
     }
 }

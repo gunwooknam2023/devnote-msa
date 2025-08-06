@@ -260,6 +260,7 @@ public class YouTubeFetchService {
         ContentMessageDto msg = ContentMessageDto.builder()
                 .source("YOUTUBE")
                 .category(category)
+                .channelId(channelId)
                 .title(title)
                 .link("https://www.youtube.com/watch?v=" + videoId)
                 .thumbnailUrl(thumbnailUrl)

@@ -42,13 +42,14 @@ public class ContentController {
             @RequestParam(defaultValue = "24") int size,
             @RequestParam(required = false) String source,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) String channelId,
             @RequestParam(required = false) String title,
             @RequestParam(defaultValue = "newest") String sort
     ) {
         log.info("API list() page={}, size={}, source={}, category={}, title={}, sort={}",
                 page, size, source, category, title, sort);
 
-        PageResponseDto<ContentDto> result = contentService.getContents(page, size, source, category, title, sort);
+        PageResponseDto<ContentDto> result = contentService.getContents(page, size, source, category, channelId, title, sort);
 
         return ResponseEntity.ok(
                 ApiResponseDto.<PageResponseDto<ContentDto>>builder()

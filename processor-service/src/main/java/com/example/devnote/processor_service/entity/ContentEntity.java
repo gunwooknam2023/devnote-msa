@@ -23,6 +23,9 @@ public class ContentEntity {
     private String category;
     private String title;
 
+    @Column(name = "channel_id", length = 50)
+    private String channelId;
+
     @Column(length = 500)
     private String link;
 

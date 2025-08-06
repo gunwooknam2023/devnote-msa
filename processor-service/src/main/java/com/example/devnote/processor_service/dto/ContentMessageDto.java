@@ -14,6 +14,7 @@ import java.time.Instant;
 public class ContentMessageDto {
     private String source;       // "NEWS" or "YOUTUBE"
     private String category;     // "BACKEND", "FRONTEND", "DEVOPS" 등 추가
+    private String channelId;    // 유튜브 채널 ID
     private String title;        // 제목
     private String description;  // 설명 (News 전용)
     private String link;         // 콘텐츠 원본 링크

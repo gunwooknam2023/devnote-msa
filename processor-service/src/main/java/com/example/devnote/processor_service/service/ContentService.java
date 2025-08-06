@@ -55,6 +55,7 @@ public class ContentService {
             ContentEntity ent = ContentEntity.builder()
                     .source(msg.getSource())
                     .category(msg.getCategory())
+                    .channelId(msg.getChannelId())
                     .title(msg.getTitle())
                     .link(msg.getLink())
                     .thumbnailUrl(msg.getThumbnailUrl())
@@ -88,6 +89,7 @@ public class ContentService {
             int size,
             String source,
             String category,
+            String channelId,
             String title,
             String sortOrder
     ) {
@@ -107,7 +109,7 @@ public class ContentService {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         // 동적 필터링
-        Specification<ContentEntity> spec = buildSpecification(source, category, title);
+        Specification<ContentEntity> spec = buildSpecification(source, category, channelId, title);
 
         // 조회
         Page<ContentEntity> entityPage = contentRepository.findAll(spec, pageable);
@@ -133,6 +135,7 @@ public class ContentService {
     private Specification<ContentEntity> buildSpecification(
             String source,
             String category,
+            String channelId,
             String title
     ) {
         return (root, query, cb) -> {
@@ -143,6 +146,9 @@ public class ContentService {
             }
             if (category != null && !category.isBlank()) {
                 predicates.add(cb.equal(root.get("category"), category));
+            }
+            if (channelId != null && !channelId.isBlank()) {
+                predicates.add(cb.equal(root.get("channelId"), channelId));
             }
             if (title != null && !title.isBlank()) {
                 predicates.add(cb.like(
@@ -162,6 +168,7 @@ public class ContentService {
                 .id(e.getId())
                 .source(e.getSource())
                 .category(e.getCategory())
+                .channelId(e.getChannelId())
                 .title(e.getTitle())
                 .link(e.getLink())
                 .thumbnailUrl(e.getThumbnailUrl())

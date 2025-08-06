@@ -1,8 +1,10 @@
 package com.example.devnote.controller;
 
 import com.example.devnote.dto.ApiResponseDto;
+import com.example.devnote.dto.FavoritesResponseDto;
 import com.example.devnote.service.ChannelFavoriteService;
 import com.example.devnote.service.ContentFavoriteService;
+import com.example.devnote.service.FavoritesService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,24 @@ import java.util.List;
 public class FavoriteController {
     private final ChannelFavoriteService channelFav;
     private final ContentFavoriteService contentFav;
+    private final FavoritesService favoritesService;
+
+    /**
+     * 찜한 채널 & 콘텐츠를 한 번에 조회
+     * - 로그인된 유저ID로 즐겨찾기 테이블에서 ID 리스트 조회
+     * - API-Gateway 통해 DTO(ContentDto, ChannelSubscriptionDto) 가져와 조합
+     */
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponseDto<FavoritesResponseDto>> getAllFavorites() {
+        FavoritesResponseDto dto = favoritesService.getAllFavorites();
+        return ResponseEntity.ok(
+                ApiResponseDto.<FavoritesResponseDto>builder()
+                        .message("Fetched all favorites")
+                        .statusCode(200)
+                        .data(dto)
+                        .build()
+        );
+    }
 
     // 채널 찜 추가
     @PostMapping("/channels/{id}")

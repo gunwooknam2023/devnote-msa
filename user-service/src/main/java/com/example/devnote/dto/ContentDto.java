@@ -24,6 +24,9 @@ public class ContentDto {
     /** 분류(예: BACKEND, FRONTEND 등) */
     private String category;
 
+    /** 채널 ID */
+    private String channelId;
+
     /** 제목 */
     private String title;
 
@@ -57,4 +60,7 @@ public class ContentDto {
 
     /** "SHORTS" 또는 "LONGFORM" */
     private String videoForm;
+
+    /** 구독자 수 */
+    private Long subscriberCount;
 }

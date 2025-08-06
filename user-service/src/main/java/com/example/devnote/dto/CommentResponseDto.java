@@ -22,6 +22,7 @@ public class CommentResponseDto {
     private String content;
     private String contentTitle;
     private String contentSource;
+    private String contentLink;
     private Instant createdAt;
     private Instant updatedAt;
     private List<CommentResponseDto> replies;

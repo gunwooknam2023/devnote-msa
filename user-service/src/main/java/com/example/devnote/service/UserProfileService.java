@@ -102,7 +102,7 @@ public class UserProfileService {
 
     /** CommentEntity -> CommentResponseDto 변환 */
     private CommentResponseDto toCommentDto(CommentEntity e) {
-        List<CommentResponseDto> replies = commentRepo.findByUserIdOrderByCreatedAtDesc(e.getId())
+        List<CommentResponseDto> replies = commentRepo.findByParentIdOrderByCreatedAtAsc(e.getId())
                 .stream()
                 .map(this::toCommentDto)
                 .toList();

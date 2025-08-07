@@ -70,25 +70,36 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         userRepo.save(user);
 
         // 5) JWT 발급
-        String accessToken = tokenProvider.createAccessToken(user.getEmail()); // 제거? 다시 한번 생각해야함
+        String accessToken = tokenProvider.createAccessToken(user.getEmail());
         String refreshToken = tokenProvider.createRefreshToken(user.getEmail());
 
-        // 6) Redis 저장
-        String key = "refresh:" + refreshToken;
+        // 6) Redis에 리프레시 토큰 저장
+                String key = "refresh:" + refreshToken;
         long expSec = tokenProvider.getRefreshValidity() / 1000;
         redis.opsForValue().set(key, user.getEmail(), Duration.ofSeconds(expSec));
 
-        // 7) HttpOnly + SameSite=None + Secure 쿠키로 RefreshToken 세팅
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+        // 7) HttpOnly 쿠키로 RefreshToken 세팅
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
-                .secure(true)
-                .sameSite("None")
+                .secure(false)
+//                .sameSite("None")
                 .path("/")
-                .maxAge(tokenProvider.getRefreshValidity() / 1000)
+                .maxAge(expSec)
                 .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-        // 8) next → 리다이렉트
+        //  HttpOnly 쿠키로 AccessToken 세팅
+        long accessExpSec = tokenProvider.getAccessValidity() / 1000;
+        ResponseCookie accessCookie = ResponseCookie.from("accessToken", accessToken)
+                .httpOnly(true)
+                .secure(false)
+//                .sameSite("None")
+                .path("/")
+                .maxAge(accessExpSec)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
+
+        // 8) 리다이렉트
         String next = request.getParameter("next");
         String target = (next != null && !next.isEmpty()) ? next : frontendUrl;
         response.sendRedirect(target);

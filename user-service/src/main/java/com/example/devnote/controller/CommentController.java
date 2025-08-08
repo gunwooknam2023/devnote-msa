@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/comments")
@@ -79,5 +80,20 @@ public class CommentController {
                 .data(null)
                 .build();
         return ResponseEntity.ok(body);
+    }
+
+    /** 여러 콘텐츠의 댓글 수를 일괄 조회 */
+    @GetMapping("/counts")
+    public ResponseEntity<ApiResponseDto<Map<Long, Integer>>> getCommentCounts(
+            @RequestParam List<Long> contentIds
+    ) {
+        Map<Long, Integer> counts = commentService.getCommentCounts(contentIds);
+        return ResponseEntity.ok(
+                ApiResponseDto.<Map<Long, Integer>>builder()
+                        .message("Fetched comment counts")
+                        .statusCode(HttpStatus.OK.value())
+                        .data(counts)
+                        .build()
+        );
     }
 }

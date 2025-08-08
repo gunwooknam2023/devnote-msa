@@ -17,9 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -203,5 +201,37 @@ public class CommentService {
                 .replies(replies)
                 .build();
         return dto;
+    }
+
+    /** 여러 콘텐츠의 댓글 수를 일괄 조회 (대댓글 포함) */
+    @Transactional(readOnly = true)
+    public Map<Long, Integer> getCommentCounts(List<Long> contentIds) {
+        Map<Long, Integer> result = new HashMap<>();
+
+        for (Long contentId : contentIds) {
+            List<CommentEntity> comments = commentRepository.findByContentIdAndParentIdIsNullOrderByCreatedAtAsc(contentId);
+            int totalCount = 0;
+
+            for (CommentEntity comment : comments) {
+                totalCount++;
+                totalCount += countReplies(comment.getId());
+            }
+
+            result.put(contentId, totalCount);
+        }
+
+        return result;
+    }
+
+    /** 특정 댓글의 대댓글 수를 재귀적으로 계산 */
+    private int countReplies(Long parentId) {
+        List<CommentEntity> replies = commentRepository.findByParentIdOrderByCreatedAtAsc(parentId);
+        int count = replies.size();
+
+        for (CommentEntity reply : replies) {
+            count += countReplies(reply.getId());
+        }
+
+        return count;
     }
 }

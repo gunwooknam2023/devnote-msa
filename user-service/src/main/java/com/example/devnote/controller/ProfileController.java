@@ -18,6 +18,19 @@ public class ProfileController {
     private final UserRepository userRepository;
     private final UserProfileService profileService;
 
+    /** 특정 사용자의 프로필 정보 조회 */
+    @GetMapping("/{userId}/profile")
+    public ResponseEntity<ApiResponseDto<UserProfileDto>> getUserProfile(@PathVariable Long userId) {
+        UserProfileDto profile = profileService.getUserProfile(userId);
+        return ResponseEntity.ok(
+                ApiResponseDto.<UserProfileDto>builder()
+                        .message("User profile fetched successfully")
+                        .statusCode(HttpStatus.OK.value())
+                        .data(profile)
+                        .build()
+        );
+    }
+
     /** 프로필 페이지 정보 반환 (찜 영상, 뉴스, 채널 / 작성한 댓글 목록) */
     @GetMapping("/dashboard")
     public ResponseEntity<ApiResponseDto<DashboardDto>> getDashboard() {

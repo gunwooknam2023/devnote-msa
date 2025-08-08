@@ -82,6 +82,11 @@ public class CommentService {
 
         ent = commentRepository.save(ent);
 
+        // 회원 댓글인 경우 활동점수 증가
+        if (userId != null) {
+            userRepository.incrementActivityScore(userId);
+        }
+
         List<CommentResponseDto> replies = listReplies(ent.getId());
         CommentResponseDto dto = toDto(ent, replies);
         return dto;
@@ -159,6 +164,11 @@ public class CommentService {
                 throw new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED, "Invalid password");
             }
+        }
+
+        // 회원 댓글인 경우 활동점수 감소
+        if (ent.getUserId() != null) {
+            userRepository.decrementActivityScore(ent.getUserId());
         }
 
         commentRepository.delete(ent);

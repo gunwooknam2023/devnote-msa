@@ -33,6 +33,63 @@ public class UserProfileService {
                 .orElseThrow(() -> new RuntimeException("User not found: " + email));
     }
 
+    /** 특정 사용자의 프로필 정보 조회 */
+    @Transactional(readOnly = true)
+    public UserProfileDto getUserProfile(Long userId) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 찜한 영상 개수
+        int favoriteVideoCount = favContentRepo.findByUserId(userId).stream()
+                .mapToInt(fav -> {
+                    try {
+                        ApiResponseDto<ContentDto> response = apiGatewayClient.get()
+                                .uri("/api/v1/contents/{id}", fav.getContentId())
+                                .retrieve()
+                                .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ContentDto>>() {})
+                                .block();
+                        return "YOUTUBE".equals(response.getData().getSource()) ? 1 : 0;
+                    } catch (Exception e) {
+                        return 0;
+                    }
+                })
+                .sum();
+
+        // 찜한 뉴스 개수
+        int favoriteNewsCount = favContentRepo.findByUserId(userId).stream()
+                .mapToInt(fav -> {
+                    try {
+                        ApiResponseDto<ContentDto> response = apiGatewayClient.get()
+                                .uri("/api/v1/contents/{id}", fav.getContentId())
+                                .retrieve()
+                                .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ContentDto>>() {})
+                                .block();
+                        return "NEWS".equals(response.getData().getSource()) ? 1 : 0;
+                    } catch (Exception e) {
+                        return 0;
+                    }
+                })
+                .sum();
+
+        // 찜한 채널 개수
+        int favoriteChannelCount = favChannelRepo.findByUserId(userId).size();
+
+        // 작성한 댓글 개수 (대댓글 포함)
+        int commentCount = commentRepo.countTotalCommentsByUserId(userId);
+
+        return UserProfileDto.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .picture(user.getPicture())
+                .selfIntroduction(user.getSelfIntroduction())
+                .activityScore(user.getActivityScore())
+                .favoriteVideoCount(favoriteVideoCount)
+                .favoriteNewsCount(favoriteNewsCount)
+                .favoriteChannelCount(favoriteChannelCount)
+                .commentCount(commentCount)
+                .build();
+    }
+
     /** 자기소개 수정 */
     @Transactional
     public String update(ProfileRequestDto req) {
@@ -44,7 +101,8 @@ public class UserProfileService {
 
     /** 프로필 페이지 정보 반환 (찜 영상, 뉴스, 채널 / 작성한 댓글 목록) */
     public DashboardDto getDashboard() {
-        Long userId = currentUser().getId();
+        User currentUser = currentUser();
+        Long userId = currentUser.getId();
 
         // 1) 찜한 콘텐츠 ID 목록
         List<Long> contentIds = favContentRepo.findByUserId(userId)
@@ -97,6 +155,7 @@ public class UserProfileService {
                 .favoriteNews(favoriteNews)
                 .favoriteChannels(favoriteChannels)
                 .comments(comments)
+                .activityScore(currentUser.getActivityScore())
                 .build();
     }
 

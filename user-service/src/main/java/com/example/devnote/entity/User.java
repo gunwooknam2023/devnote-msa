@@ -31,6 +31,10 @@ public class User {
 
     private String picture;
 
+    @Column(name = "activity_score", nullable = false)
+    @Builder.Default
+    private Integer activityScore = 0;
+
     @Column(length = 500)
     private String selfIntroduction;
 }

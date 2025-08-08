@@ -30,4 +30,7 @@ public class DashboardDto {
 
     /** 작성한 댓글들 */
     private List<CommentResponseDto> comments;
+
+    /** 활동 점수 */
+    private Integer activityScore;
 }

@@ -4,6 +4,7 @@ import com.example.devnote.processor_service.dto.ApiResponseDto;
 import com.example.devnote.processor_service.dto.ContentDto;
 import com.example.devnote.processor_service.dto.PageResponseDto;
 import com.example.devnote.processor_service.service.ContentService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.Response;
@@ -76,9 +77,13 @@ public class ContentController {
     /** 단일 콘텐츠 조회 (찜 기능용 존재 확인) */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponseDto<ContentDto>> getById(
-            @PathVariable Long id
+            @PathVariable Long id,
+            HttpServletRequest req
     ) {
         ContentDto dto = contentService.getContentById(id);  // 서비스 레이어에서 NoSuchElementException 처리
+        if("YOUTUBE".equalsIgnoreCase(dto.getSource())) {
+            contentService.countView(id, req);
+        }
         return ResponseEntity.ok(
                 ApiResponseDto.<ContentDto>builder()
                         .message("Fetched content")

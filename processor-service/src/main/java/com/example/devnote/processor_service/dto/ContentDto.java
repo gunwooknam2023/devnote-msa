@@ -27,6 +27,7 @@ public class ContentDto {
     private String channelTitle;        // 유튜브 채널명
     private String channelThumbnailUrl; // 채널 썸네일
     private Long viewCount;             // 영상 조회수
+    private Long localViewCount;        // 로컬 영상 조회수
     private Long durationSeconds;       // 영상 길이(초)
     private String videoForm;           // "SHORTS" or "LONGFORM"
     private Long subscriberCount;       // 구독자 수

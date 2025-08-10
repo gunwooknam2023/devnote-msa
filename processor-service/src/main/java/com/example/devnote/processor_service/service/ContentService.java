@@ -6,6 +6,7 @@ import com.example.devnote.processor_service.dto.PageResponseDto;
 import com.example.devnote.processor_service.entity.ContentEntity;
 import com.example.devnote.processor_service.repository.ContentRepository;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -14,13 +15,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.List;
+import javax.annotation.Nullable;
+import java.time.Duration;
+import java.util.*;
 
 /**
  * 비즈니스 로직 수행용 서비스
@@ -31,7 +36,11 @@ import java.util.List;
 public class ContentService {
     private final ContentRepository contentRepository;
     private final RedisTemplate<String, Object> redis;
+    private final StringRedisTemplate sredis;
+
     private static final String CACHE_PREFIX = "cache:";
+    private static final String VIEW_KEY_FMT = "views:content:%d:count";
+    private static final String DEDUP_KEY_FMT = "views:dedup:%d:%s";
 
     /** Kafka 메시지 수신 → 저장 + Redis 캐시 */
     @KafkaListener(
@@ -177,6 +186,7 @@ public class ContentService {
                 .channelTitle(e.getChannelTitle())
                 .channelThumbnailUrl(e.getChannelThumbnailUrl())
                 .viewCount(e.getViewCount())
+                .localViewCount(e.getLocalViewCount())
                 .durationSeconds(e.getDurationSeconds())
                 .videoForm(e.getVideoForm())
                 .subscriberCount(e.getSubscriberCount())
@@ -216,5 +226,58 @@ public class ContentService {
     public void deleteById(Long id) {
         contentRepository.deleteById(id);
         log.info("Content deleted: {}", id);
+    }
+
+    /**
+     * 조회수 카운팅 (뉴스/유튜브 공용)
+     */
+    public void countView(Long id, @Nullable HttpServletRequest req) {
+        if (!contentRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Content not fount: " + id);
+        }
+
+        // IP+UA 기반 중복 방지 (10분간)
+        if (req != null) {
+            String ip = Optional.ofNullable(req.getHeader("X-Forwarded-For"))
+                    .map(x -> x.split(",")[0].trim())
+                    .orElseGet(() -> req.getRemoteAddr());
+            String ua = Optional.ofNullable(req.getHeader("User-Agent")).orElse("-");
+            String dedupKey = DEDUP_KEY_FMT.formatted(id, Integer.toHexString(Objects.hash(ip, ua)));
+            Boolean first = sredis.opsForValue().setIfAbsent(dedupKey, "1", Duration.ofMinutes(10));
+
+            if (Boolean.FALSE.equals(first)) return;
+        }
+
+        // 합계 카운터 증가
+        String key = VIEW_KEY_FMT.formatted(id);
+        sredis.opsForValue().increment(key);
+    }
+
+    /**
+     * 조회수 1분마다 Redis -> DB 반영
+     */
+    @Scheduled(fixedDelayString = "60000")
+    @Transactional
+    public void flushViewCounts() {
+        // 운영 모드에서는 변경 예정
+        Set<String> keys = sredis.keys("views:content:*:count");
+        if (keys == null || keys.isEmpty()) return;
+
+        for (String k : keys) {
+            String val = sredis.opsForValue().get(k);
+            if (val == null) continue;
+
+            // 삭제
+            sredis.delete(k);
+
+            long delta = Long.parseLong(val);
+            Long id = Long.parseLong(k.split(":")[2]);
+
+            contentRepository.findById(id).ifPresent(e -> {
+                long cur = e.getLocalViewCount() == null ? 0 : e.getLocalViewCount();
+                e.setLocalViewCount(cur + delta);
+                contentRepository.save(e);
+            });
+        }
     }
 }

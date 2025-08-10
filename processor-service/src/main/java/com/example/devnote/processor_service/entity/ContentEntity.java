@@ -44,6 +44,9 @@ public class ContentEntity {
     @Column(name = "subscriber_count")
     private Long subscriberCount;
 
+    @Column(name = "local_view_count", nullable = false)
+    private Long localViewCount = 0L;
+
     private Long viewCount;
     private Long durationSeconds;
     private String thumbnailUrl;

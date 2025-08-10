@@ -233,7 +233,7 @@ public class ContentService {
      */
     public void countView(Long id, @Nullable HttpServletRequest req) {
         if (!contentRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Content not fount: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Content not found: " + id);
         }
 
         // IP+UA 기반 중복 방지 (10분간)

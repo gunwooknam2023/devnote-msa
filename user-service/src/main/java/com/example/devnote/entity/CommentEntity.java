@@ -8,7 +8,10 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 
 @Entity
-@Table(name = "comments")
+@Table(name = "comments", indexes = {
+        @Index(name = "idx_comments_content_parent_created", columnList = "contentId,parentId,createdAt"),
+        @Index(name = "idx_comments_user", columnList = "userId")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -38,8 +41,17 @@ public class CommentEntity {
     private String passwordHash;
 
     /** 댓글 본문 */
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String content;
+
+    /**
+     * 소프트 삭제 여부
+     * - true: 내용만 삭제, 나머지 정보는 유지
+     * - false: 일반 댓글
+     */
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
 
     @CreationTimestamp
     private Instant createdAt;

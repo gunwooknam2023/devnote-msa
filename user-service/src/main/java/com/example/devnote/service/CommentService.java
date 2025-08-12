@@ -172,7 +172,44 @@ public class CommentService {
             userRepository.decrementActivityScore(ent.getUserId());
         }
 
-        commentRepository.delete(ent);
+        // 자식 댓글 존재 여부
+        boolean hasChildren = commentRepository.existsByParentId(ent.getId());
+
+        if(hasChildren) {
+            // 소프트 삭제
+            ent.setDeleted(true);
+            ent.setContent(null);
+
+            commentRepository.save(ent);
+        } else {
+            // 하드 삭제
+            Long pareneId = ent.getParentId();
+            commentRepository.delete(ent);
+
+            // 부모 자동 정리
+            cleanupSoftDeletedAncestor(pareneId);
+        }
+    }
+
+    /**
+     * 부모 자동 정리
+     * - isDeleted 가 true 이고, 더이상 자식이 없으면 해당 부모 하드 삭제
+     */
+    private void cleanupSoftDeletedAncestor(Long maybeParentId) {
+        if (maybeParentId == null) return;
+
+        Optional<CommentEntity> opt = commentRepository.findById(maybeParentId);
+        if (opt.isEmpty()) return;
+
+        CommentEntity parent = opt.get();
+
+        if (parent.isDeleted() && !commentRepository.existsByParentId(parent.getId())) {
+            Long next = parent.getParentId();
+            commentRepository.delete(parent);
+
+            // 연쇄 정리
+            cleanupSoftDeletedAncestor(next);
+        }
     }
 
     /** 콘텐츠별 댓글 전체 조회 (루트 댓글) */
@@ -204,6 +241,9 @@ public class CommentService {
                     .map(User::getPicture).orElse(null)
                     : null;
 
+            // 내용이 소프트 삭제된 경우 null
+            String displayContent = e.isDeleted() ? null : e.getContent();
+
             dtoMap.put(e.getId(), CommentResponseDto.builder()
                     .id(e.getId())
                     .parentId(e.getParentId())
@@ -211,7 +251,7 @@ public class CommentService {
                     .userId(e.getUserId())
                     .username(displayName)
                     .userPicture(displayPicture)
-                    .content(e.getContent())
+                    .content(displayContent)
                     .createdAt(e.getCreatedAt())
                     .updatedAt(e.getUpdatedAt())
                     .replies(new ArrayList<>())

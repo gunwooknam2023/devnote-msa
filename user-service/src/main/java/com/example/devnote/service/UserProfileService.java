@@ -177,8 +177,11 @@ public class UserProfileService {
         String contentSource = cr.getData().getSource();
         String contentLink   = cr.getData().getLink();
 
-        // 유저 프로필 사진 조회
-        User user = userRepo.findById(e.getUserId()).orElseThrow();
+        // userId가 null(익명)일 수 있으므로 null-safe
+        String upic = null;
+        if (e.getUserId() != null) {
+            upic = userRepo.findById(e.getUserId()).map(User::getPicture).orElse(null);
+        }
 
         return CommentResponseDto.builder()
                 .id(e.getId())
@@ -186,7 +189,7 @@ public class UserProfileService {
                 .contentId(e.getContentId())
                 .userId(e.getUserId())
                 .username(e.getUsername())
-                .userPicture(user.getPicture())
+                .userPicture(upic)
                 .content(e.getContent())
                 .createdAt(e.getCreatedAt())
                 .updatedAt(e.getUpdatedAt())

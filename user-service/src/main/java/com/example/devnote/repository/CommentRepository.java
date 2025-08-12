@@ -9,6 +9,7 @@ import java.util.List;
 
 public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
     List<CommentEntity> findByContentIdAndParentIdIsNullOrderByCreatedAtAsc(Long contentId);
+    List<CommentEntity> findByContentIdOrderByCreatedAtAsc(Long contentId);
     List<CommentEntity> findByParentIdOrderByCreatedAtAsc(Long parentId);
     List<CommentEntity> findByUserIdOrderByCreatedAtDesc(Long userId);
 

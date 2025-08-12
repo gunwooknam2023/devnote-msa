@@ -15,7 +15,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Mono;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,10 +28,12 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final WebClient apiGatewayClient;
 
     /** 댓글 생성 (회원/비회원 공용) */
     @Transactional
     public CommentResponseDto createComment(CommentRequestDto req) {
+        assertContentExists(req.getContentId());
 
         // 대댓글 작성시 댓글 id 검증
         if (req.getParentId() != null) {
@@ -48,7 +52,6 @@ public class CommentService {
         Long userId = null;
         String username;
         String passwordHash = null;
-        String userPicture = null;
 
         if (auth != null
                 && auth.isAuthenticated()
@@ -59,7 +62,6 @@ public class CommentService {
                             HttpStatus.UNAUTHORIZED, "User not found: " + email));
             userId = u.getId();
             username = u.getName();
-            userPicture = u.getPicture();
         } else {
             if (req.getUsername() == null || req.getPassword() == null) {
                 throw new ResponseStatusException(
@@ -75,7 +77,6 @@ public class CommentService {
                 .parentId(req.getParentId())
                 .userId(userId)
                 .username(username)
-                .picture(userPicture)
                 .passwordHash(passwordHash)
                 .content(req.getContent())
                 .build();
@@ -177,11 +178,59 @@ public class CommentService {
     /** 콘텐츠별 댓글 전체 조회 (루트 댓글) */
     @Transactional(readOnly = true)
     public List<CommentResponseDto> listCommentsByContent(Long contentId) {
-        List<CommentEntity> roots = commentRepository
-                .findByContentIdAndParentIdIsNullOrderByCreatedAtAsc(contentId);
-        return roots.stream()
-                .map(root -> toDto(root, listReplies(root.getId())))
-                .collect(Collectors.toList());
+        // 1) 모든 댓글 한 번에 가져오기 (루트+대댓글 전체)
+        List<CommentEntity> all = commentRepository.findByContentIdOrderByCreatedAtAsc(contentId);
+
+        // 2) userId 수집 → 최신 사용자 정보 일괄 조회
+        Set<Long> userIds = all.stream()
+                .map(CommentEntity::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, User> userMap = userIds.isEmpty()
+                ? Collections.emptyMap()
+                : userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(
+                        User::getId, u -> u));
+
+        // 3) id → DTO 초기화
+        Map<Long, CommentResponseDto> dtoMap = new LinkedHashMap<>();
+        for (CommentEntity e : all) {
+            String displayName = e.getUserId() != null
+                    ? Optional.ofNullable(userMap.get(e.getUserId()))
+                    .map(User::getName).orElse(e.getUsername())
+                    : e.getUsername();
+            String displayPicture = e.getUserId() != null
+                    ? Optional.ofNullable(userMap.get(e.getUserId()))
+                    .map(User::getPicture).orElse(null)
+                    : null;
+
+            dtoMap.put(e.getId(), CommentResponseDto.builder()
+                    .id(e.getId())
+                    .parentId(e.getParentId())
+                    .contentId(e.getContentId())
+                    .userId(e.getUserId())
+                    .username(displayName)
+                    .userPicture(displayPicture)
+                    .content(e.getContent())
+                    .createdAt(e.getCreatedAt())
+                    .updatedAt(e.getUpdatedAt())
+                    .replies(new ArrayList<>())
+                    .build());
+        }
+
+        // 4) 부모-자식 연결
+        List<CommentResponseDto> roots = new ArrayList<>();
+        for (CommentEntity e : all) {
+            CommentResponseDto dto = dtoMap.get(e.getId());
+            if (e.getParentId() == null) {
+                roots.add(dto);
+            } else {
+                CommentResponseDto parent = dtoMap.get(e.getParentId());
+                if (parent != null) parent.getReplies().add(dto);
+            }
+        }
+
+        return roots;
     }
 
     /** 대댓글 조회 */
@@ -204,7 +253,6 @@ public class CommentService {
                 .contentId(e.getContentId())
                 .userId(e.getUserId())
                 .username(e.getUsername())
-                .userPicture(e.getPicture())
                 .content(e.getContent())
                 .createdAt(e.getCreatedAt())
                 .updatedAt(e.getUpdatedAt())
@@ -243,5 +291,17 @@ public class CommentService {
         }
 
         return count;
+    }
+
+    /** 콘텐츠 존재 검증 */
+    private void assertContentExists(Long contentId) {
+        apiGatewayClient.get()
+                .uri("/api/v1/contents/{id}", contentId)
+                .retrieve()
+                .onStatus(s -> s.value()==404,
+                        resp -> Mono.error(new ResponseStatusException(
+                                HttpStatus.NOT_FOUND, "Content not found: " + contentId)))
+                .toBodilessEntity()
+                .block();
     }
 }

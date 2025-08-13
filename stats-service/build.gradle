@@ -19,6 +19,19 @@ dependencies {
 	// Eureka Client
 	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 
+	// DB & Redis
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	runtimeOnly   'org.mariadb.jdbc:mariadb-java-client'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// Validation & Lombok
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	compileOnly   'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// Scheduling
+	implementation 'org.springframework.boot:spring-boot-starter'
+
 	// 테스트
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'

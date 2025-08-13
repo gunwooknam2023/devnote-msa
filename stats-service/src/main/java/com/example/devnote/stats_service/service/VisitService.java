@@ -14,6 +14,12 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+/**
+ * 방문자 통계 서비스
+ * - 12시간 버킷(00~11, 12~23) 중복 방지 → 같은 방문자 하루 최대 2회 카운트
+ * - Redis에 일/시간 카운터를 올려 실시간 조회 가속화
+ * - DB에는 VisitEvent(버킷 단위 1행)로 영속
+ */
 @Service
 @RequiredArgsConstructor
 public class VisitService {
@@ -29,14 +35,17 @@ public class VisitService {
     private String hourKey(LocalDate day, int hour) { return "visit:count:hour:" + DAY_FMT.format(day) + ":" + String.format("%02d", hour); }
     private String dedupKey(String visitorHash, Instant bucketStart) { return "visit:dedup:" + visitorHash + ":" + bucketStart.toEpochMilli(); }
 
-    // 12시간 버킷 시작 시각
+    /** 현재 시각이 속한 12시간 버킷의 시작 시각(ZonedDateTime) */
     private ZonedDateTime bucketStart(ZonedDateTime now) {
         int h = now.getHour();
         int startHour = (h < 12) ? 0 : 12;
         return now.withHour(startHour).withMinute(0).withSecond(0).withNano(0);
     }
 
-    // 요청에서 visitorHash 생성 (visitorId > ip+ua)
+    /**
+     * 방문자 식별 해시 계산
+     * - visitorId가 있으면 그것으로, 없으면 ip+ua 조합으로 생성
+     */
     private String computeVisitorHash(String visitorId, HttpServletRequest req) {
         if (visitorId != null && !visitorId.isBlank()) {
             return Hashing.sha256Hex("VID:" + visitorId);
@@ -48,6 +57,11 @@ public class VisitService {
         return Hashing.sha256Hex("IPUA:" + ip + "|" + ua);
     }
 
+    /**
+     * 방문 트래킹
+     * - 동일 방문자/동일 12시간 버킷에서는 1회만 카운트
+     * - Redis 카운터 증가 + DB VisitEvent 저장(유니크 제약으로 중복 방지)
+     */
     public TrackResponseDto track(TrackRequestDto in, HttpServletRequest req) {
         ZonedDateTime now = ZonedDateTime.now(ZONE);
         ZonedDateTime bucket = bucketStart(now);
@@ -96,6 +110,7 @@ public class VisitService {
                 .build();
     }
 
+    /** 오늘 카운트 (Redis 우선, 없으면 DB에서 채워 넣음) */
     private long getTodayCountInternal(LocalDate day) {
         String key = dayKey(day);
         String v = redis.opsForValue().get(key);
@@ -107,6 +122,7 @@ public class VisitService {
         return c;
     }
 
+    /** 오늘 방문자수 조회 */
     public TodayCountDto getTodayCount() {
         LocalDate day = LocalDate.now(ZONE);
         return TodayCountDto.builder()
@@ -115,6 +131,7 @@ public class VisitService {
                 .build();
     }
 
+    /** 기간 일별 방문자수 조회 */
     public List<DailyCountDto> getDailyCounts(LocalDate start, LocalDate end) {
         if (start.isAfter(end)) { var t=start; start=end; end=t; }
         Map<LocalDate, Long> map = new HashMap<>();
@@ -129,6 +146,7 @@ public class VisitService {
         return out;
     }
 
+    /** 특정 날짜 시간별 방문자수 조회 */
     public List<HourlyCountDto> getHourlyCounts(LocalDate day) {
         Map<Integer, Long> map = new HashMap<>();
         for (Object[] row : repo.countByHour(day)) {

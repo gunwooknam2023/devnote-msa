@@ -15,6 +15,7 @@ repositories {
 dependencies {
 	// Web
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
 	// Eureka Client
 	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
@@ -28,6 +29,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	compileOnly   'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+
+	// Kafka
+	implementation 'org.springframework.kafka:spring-kafka'
 
 	// Scheduling
 	implementation 'org.springframework.boot:spring-boot-starter'

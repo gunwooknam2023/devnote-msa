@@ -45,6 +45,7 @@ public class ContentEntity {
     private Long subscriberCount;
 
     @Column(name = "local_view_count", nullable = false)
+    @Builder.Default
     private Long localViewCount = 0L;
 
     private Long viewCount;

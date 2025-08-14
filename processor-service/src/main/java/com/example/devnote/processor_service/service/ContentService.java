@@ -18,6 +18,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.Nullable;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.*;
 
 /**
@@ -37,6 +39,7 @@ public class ContentService {
     private final ContentRepository contentRepository;
     private final RedisTemplate<String, Object> redis;
     private final StringRedisTemplate sredis;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     private static final String CACHE_PREFIX = "cache:";
     private static final String VIEW_KEY_FMT = "views:content:%d:count";
@@ -79,6 +82,9 @@ public class ContentService {
                     .build();
             ent = contentRepository.save(ent);
             log.info("Saved ContentEntity id={}", ent.getId());
+
+            // 신규 콘텐츠 생성 이벤트 발행
+            kafkaTemplate.send("content.created", String.valueOf(ent.getId()));
 
             // Redis 캐시 갱신 (최신 100개)
             String key = CACHE_PREFIX + msg.getCategory();
@@ -279,5 +285,12 @@ public class ContentService {
                 contentRepository.save(e);
             });
         }
+    }
+
+    /**
+     * 특정 날짜에 생성된 콘텐츠 수를 반환합니다 (내부 통계용).
+     */
+    public long countByDay(LocalDate date) {
+        return contentRepository.countByCreatedAt(date);
     }
 }

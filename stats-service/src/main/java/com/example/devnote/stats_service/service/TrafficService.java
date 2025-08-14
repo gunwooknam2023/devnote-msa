@@ -53,6 +53,10 @@ public class TrafficService {
         return "traffic:count:hour:" + DAY_FMT.format(day) + ":" + String.format("%02d", hour);
     }
 
+    private String contentViewDayKey(LocalDate day) {
+        return "stats:content_view:day:" + DAY_FMT.format(day);
+    }
+
     /** 집계 전체 통계 */
     private String minuteKey(LocalDate day, int hour, int minute) {
         return "traffic:count:minute:" + DAY_FMT.format(day)
@@ -99,6 +103,13 @@ public class TrafficService {
         redis.opsForValue().increment(mkDim);
         redis.expire(mkDim, Duration.ofDays(2));
         redis.opsForSet().add(PENDING_SET, mkDim);
+
+        // 콘텐츠 조회수 실시간 집계 (뉴스 또는 유튜브)
+        if ("GET".equalsIgnoreCase(method) && (path.startsWith("/api/v1/contents/") || path.startsWith("/r/"))) {
+            String viewCountKey = contentViewDayKey(day);
+            redis.opsForValue().increment(viewCountKey);
+            redis.expire(viewCountKey, Duration.ofDays(2)); // 2일 후 만료되도록 TTL 설정
+        }
 
         return TrafficTrackResponseDto.builder()
                 .counted(true)

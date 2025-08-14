@@ -42,4 +42,10 @@ public interface TrafficMinuteRepository extends JpaRepository<TrafficMinute, Lo
                       @Param("method") String method,
                       @Param("path") String path,
                       @Param("delta") long delta);
+
+    /** 특정 날짜의 콘텐츠 조회수(뉴스/유튜브) 합계를 조회 */
+    @Query("SELECT COALESCE(SUM(t.count), 0) FROM TrafficMinute t " +
+            "WHERE t.day = :date AND t.method = 'GET' " +
+            "AND (t.path LIKE '/api/v1/contents/%' OR t.path LIKE '/r/%')")
+    long sumContentViewsByDay(@Param("date") LocalDate date);
 }

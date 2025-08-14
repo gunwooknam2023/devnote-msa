@@ -26,22 +26,22 @@ public class CategoryClassificationService {
     /**
      * 1시간마다 YOUTUBE 영상목록중 카테고리가 TBC 인것을 조회해서 AI로 분류 후 업데이트
      */
-    @Scheduled(fixedDelayString = "3600000")
-    public void classifyTbcContents() {
-        List<ContentEntity> toClassify = contentRepository
-                .findBySourceAndCategory("YOUTUBE", "TBC");
-
-        toClassify.forEach(ent -> {
-            try {
-                String label = callGemini(ent.getTitle());
-                ent.setCategory(label);
-                contentRepository.save(ent);
-                log.info("Classified id={} title='{}' → {}", ent.getId(), ent.getTitle(), label);
-            } catch (Exception ex) {
-                log.warn("Failed to classify id={} title='{}'", ent.getId(), ent.getTitle(), ex);
-            }
-        });
-    }
+//    @Scheduled(fixedDelayString = "3600000")
+//    public void classifyTbcContents() {
+//        List<ContentEntity> toClassify = contentRepository
+//                .findBySourceAndCategory("YOUTUBE", "TBC");
+//
+//        toClassify.forEach(ent -> {
+//            try {
+//                String label = callGemini(ent.getTitle());
+//                ent.setCategory(label);
+//                contentRepository.save(ent);
+//                log.info("Classified id={} title='{}' → {}", ent.getId(), ent.getTitle(), label);
+//            } catch (Exception ex) {
+//                log.warn("Failed to classify id={} title='{}'", ent.getId(), ent.getTitle(), ex);
+//            }
+//        });
+//    }
 
     /**
      * Gemini 2.5 Flash 호출 후 카테고리 받아오기

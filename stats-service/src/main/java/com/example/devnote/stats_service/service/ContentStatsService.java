@@ -75,7 +75,6 @@ public class ContentStatsService {
 
     /**
      * 특정 날짜의 Redis 카운트를 DB에 저장/업데이트하는 메서드
-     * @param dateToFlush 통계를 DB에 저장할 날짜
      */
     @Transactional
     public void flushStatsToDbForDate(LocalDate dateToFlush) {

@@ -1,5 +1,6 @@
 package com.example.devnote.processor_service.service;
 
+import com.example.devnote.processor_service.dto.CategoryCountDto;
 import com.example.devnote.processor_service.dto.ContentDto;
 import com.example.devnote.processor_service.dto.ContentMessageDto;
 import com.example.devnote.processor_service.dto.PageResponseDto;
@@ -288,9 +289,30 @@ public class ContentService {
     }
 
     /**
-     * 특정 날짜에 생성된 콘텐츠 수를 반환합니다 (내부 통계용).
+     * 특정 날짜에 생성된 콘텐츠 수를 반환 (내부 통계용).
      */
     public long countByDay(LocalDate date) {
         return contentRepository.countByCreatedAt(date);
+    }
+
+    /**
+     * 카테고리별 콘텐츠 개수 조회
+     */
+    public Map<String, Long> getCategoryCounts() {
+        // 1. DB에서 카테고리별 개수를 조회
+        List<CategoryCountDto> counts = contentRepository.countByCategory();
+
+        // DB에서 source가 "YOUTUBE"인 콘텐츠의 개수 조회
+        long totalCount = contentRepository.countBySource("YOUTUBE");
+
+        // 결과를 Map으로 변환
+        Map<String, Long> categoryCounts = new LinkedHashMap<>();
+
+        categoryCounts.put("전체", totalCount);
+        for (CategoryCountDto dto : counts) {
+            categoryCounts.put(dto.getCategory(), dto.getCount());
+        }
+
+        return categoryCounts;
     }
 }

@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * 콘텐츠 조회용 REST API
  *  - /api/v1/contents        : 페이징된 콘텐츠 리스트 조회
@@ -112,6 +114,21 @@ public class ContentController {
                         .message("Content deleted and event published")
                         .statusCode(200)
                         .data(null)
+                        .build()
+        );
+    }
+
+    /**
+     * 카테고리별 콘텐츠 개수 조회
+     */
+    @GetMapping("/category-counts")
+    public ResponseEntity<ApiResponseDto<Map<String, Long>>> getCategoryCounts() {
+        Map<String, Long> counts = contentService.getCategoryCounts();
+        return ResponseEntity.ok(
+                ApiResponseDto.<Map<String, Long>>builder()
+                        .message("Fetched content counts by category")
+                        .statusCode(200)
+                        .data(counts)
                         .build()
         );
     }

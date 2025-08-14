@@ -9,6 +9,7 @@ import com.example.devnote.repository.CommentRepository;
 import com.example.devnote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,6 +20,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,6 +31,7 @@ public class CommentService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final WebClient apiGatewayClient;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
     /** 댓글 생성 (회원/비회원 공용) */
     @Transactional
@@ -82,6 +85,9 @@ public class CommentService {
                 .build();
 
         ent = commentRepository.save(ent);
+
+        // 신규 댓글 생성 이벤트 발행
+        kafkaTemplate.send("comment.created", String.valueOf(ent.getId()));
 
         // 회원 댓글인 경우 활동점수 증가
         if (userId != null) {
@@ -343,5 +349,12 @@ public class CommentService {
                                 HttpStatus.NOT_FOUND, "Content not found: " + contentId)))
                 .toBodilessEntity()
                 .block();
+    }
+
+    /**
+     * 특정 날짜에 생성된 댓글 수를 반환합니다 (내부 통계용).
+     */
+    public long countByDay(LocalDate date) {
+        return commentRepository.countByCreatedAt(date);
     }
 }

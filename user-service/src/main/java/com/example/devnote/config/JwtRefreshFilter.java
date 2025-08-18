@@ -83,4 +83,13 @@ public class JwtRefreshFilter extends OncePerRequestFilter {
 
         chain.doFilter(req, res);
     }
+
+    /**
+     * 이 필터를 적용하지 않을 경로를 지정
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        // /internal/** 경로로 들어오는 요청은 이 필터를 건너뜁니다.
+        return request.getRequestURI().startsWith("/internal/");
+    }
 }

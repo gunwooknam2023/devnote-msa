@@ -57,4 +57,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         chain.doFilter(req, res);
     }
+
+    /**
+     * 이 필터를 적용하지 않을 경로를 지정
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        return request.getRequestURI().startsWith("/internal/");
+    }
 }

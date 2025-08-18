@@ -97,6 +97,7 @@ public class NewsFetchService {
                         : null)
                 .thumbnailUrl(thumbnail)
                 .publishedAt(published)
+                .category("TBC")
                 .build();
     }
 

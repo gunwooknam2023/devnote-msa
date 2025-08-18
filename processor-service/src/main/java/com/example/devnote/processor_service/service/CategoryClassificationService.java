@@ -33,19 +33,41 @@ public class CategoryClassificationService {
     private static final int BATCH_SIZE = 50;
 
     /**
-     * 1시간마다 카테고리가 'TBC'인 모든 콘텐츠를 조회하여 50개씩 묶어 일괄 분류 후 즉시 업데이트
+     * 1시간마다 카테고리가 'TBC'인 콘텐츠를 Source별로 조회하여 분류
      */
     @Scheduled(fixedDelayString = "3600000")
     public void classifyTbcContents() {
-        List<ContentEntity> toClassify = contentRepository.findBySourceAndCategory("YOUTUBE", "TBC");
-        if (toClassify.isEmpty()) {
+        // 1. 유튜브 콘텐츠 분류
+        List<ContentEntity> youtubeToClassify = contentRepository.findBySourceAndCategory("YOUTUBE", "TBC");
+        if (!youtubeToClassify.isEmpty()) {
+            log.info("[AI-CLASSIFY] Found {} YOUTUBE contents to classify.", youtubeToClassify.size());
+            processBatch(youtubeToClassify, props.getYoutube());
+        }
+
+        // 2. 뉴스 콘텐츠 분류
+        List<ContentEntity> newsToClassify = contentRepository.findBySourceAndCategory("NEWS", "TBC");
+        if (!newsToClassify.isEmpty()) {
+            log.info("[AI-CLASSIFY] Found {} NEWS contents to classify.", newsToClassify.size());
+            processBatch(newsToClassify, props.getNews());
+        }
+
+        if (youtubeToClassify.isEmpty() && newsToClassify.isEmpty()) {
             log.info("[AI-CLASSIFY] No content to classify.");
+        }
+    }
+
+    /**
+     * 주어진 콘텐츠 목록을 특정 분류 체계(Scheme)에 따라 배치 처리
+     * @param toClassify 분류할 엔티티 목록
+     * @param scheme 사용할 분류 체계 (라벨, 프롬프트 등)
+     */
+    private void processBatch(List<ContentEntity> toClassify, ClassificationProperties.Scheme scheme) {
+        if (scheme == null || scheme.getLabels() == null || scheme.getLabels().isEmpty()) {
+            log.warn("[AI-CLASSIFY] Classification scheme is not configured. Skipping batch.");
             return;
         }
-        log.info("[AI-CLASSIFY] Found {} contents to classify. Processing in batches of {}.", toClassify.size(), BATCH_SIZE);
 
         int totalBatches = (int) Math.ceil((double) toClassify.size() / BATCH_SIZE);
-
         for (int i = 0; i < toClassify.size(); i += BATCH_SIZE) {
             int end = Math.min(i + BATCH_SIZE, toClassify.size());
             List<ContentEntity> batch = toClassify.subList(i, end);
@@ -53,11 +75,13 @@ public class CategoryClassificationService {
             log.info("[AI-CLASSIFY] Processing batch {}/{} ({} items)", currentBatchNum, totalBatches, batch.size());
 
             try {
-                String prompt = buildBatchPrompt(batch);
+                String prompt = buildBatchPrompt(batch, scheme);
 
-                GenerateContentResponse resp = genaiClient.models
-                        .generateContent("gemini-2.5-flash", prompt, null);
+                // --- 수정된 부분 1: generateContent 메서드에 null 파라미터 추가 ---
+                // (사용하려는 모델 이름을 "gemini-1.5-flash" 대신 원하는 모델로 변경하셔도 됩니다)
+                GenerateContentResponse resp = genaiClient.models.generateContent("gemini-1.5-flash", prompt, null);
 
+                // --- 수정된 부분 2: getText() -> text() 메서드로 변경 ---
                 String responseText = resp.text();
 
                 Map<Long, String> classifiedCategories = parseAiResponse(responseText);
@@ -65,39 +89,37 @@ public class CategoryClassificationService {
                 List<ContentEntity> updatedInBatch = new ArrayList<>();
                 for (ContentEntity entity : batch) {
                     String category = classifiedCategories.get(entity.getId());
-                    if (category != null && props.getLabels().contains(category)) {
+                    if (category != null && scheme.getLabels().contains(category)) {
                         entity.setCategory(category);
                         updatedInBatch.add(entity);
                     }
                 }
 
-                // 현재 배치에서 성공적으로 업데이트된 엔티티들을 즉시 DB에 저장
                 if (!updatedInBatch.isEmpty()) {
                     contentRepository.saveAll(updatedInBatch);
                     log.info("[AI-CLASSIFY] Batch {}/{} finished. Successfully updated {} contents in DB.", currentBatchNum, totalBatches, updatedInBatch.size());
                 } else {
-                    log.info("[AI-CLASSIFY] Batch {}/{} finished. No items were updated.", currentBatchNum, totalBatches);
+                    log.warn("[AI-CLASSIFY] Batch {}/{} finished. No items were updated.", currentBatchNum, totalBatches);
                 }
-                // ===============================================================
 
             } catch (Exception ex) {
                 log.error("[AI-CLASSIFY] Failed to process batch {}/{}.", currentBatchNum, totalBatches, ex);
             }
         }
-        log.info("[AI-CLASSIFY] All batch processing finished.");
+        log.info("[AI-CLASSIFY] All batch processing finished for the scheme.");
     }
 
     /**
-     * 여러 콘텐츠 정보를 바탕으로 AI에 전달할 전체 프롬프트를 생성
+     * 여러 콘텐츠 정보와 특정 분류 체계를 바탕으로 AI에 전달할 전체 프롬프트를 생성
      */
-    private String buildBatchPrompt(List<ContentEntity> entities) {
+    private String buildBatchPrompt(List<ContentEntity> entities, ClassificationProperties.Scheme scheme) {
         String titlesJson = entities.stream()
                 .map(e -> String.format("{\"id\": %d, \"title\": \"%s\"}", e.getId(), escapeJson(e.getTitle())))
                 .collect(Collectors.joining(",\n", "[\n", "\n]"));
 
-        String system = props.getSystemPrompt();
-        String userTemplate = props.getUserPromptTemplate();
-        String labels = String.join(", ", props.getLabels());
+        String system = scheme.getSystemPrompt();
+        String userTemplate = scheme.getUserPromptTemplate();
+        String labels = String.join(", ", scheme.getLabels());
 
         return system + "\n\n" + String.format(userTemplate, labels, titlesJson);
     }

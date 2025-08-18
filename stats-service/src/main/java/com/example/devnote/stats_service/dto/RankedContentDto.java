@@ -25,6 +25,7 @@ public class RankedContentDto {
     private String thumbnailUrl;
     private Instant publishedAt;
     private String channelTitle;
+    private String channelId;
     private Long viewCount;
     private String description;
     private Instant createdAt;

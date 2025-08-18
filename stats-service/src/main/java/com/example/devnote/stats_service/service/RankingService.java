@@ -204,6 +204,7 @@ public class RankingService {
                 .thumbnailUrl(data.getThumbnailUrl())
                 .publishedAt(data.getPublishedAt())
                 .channelTitle(data.getChannelTitle())
+                .channelId(data.getChannelId())
                 .viewCount(data.getViewCount())
                 .description(data.getDescription())
                 .createdAt(data.getCreatedAt())

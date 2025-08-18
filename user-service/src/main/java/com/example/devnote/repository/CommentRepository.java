@@ -1,6 +1,9 @@
 package com.example.devnote.repository;
 
+import com.example.devnote.dto.RankedContentIdDto;
 import com.example.devnote.entity.CommentEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,4 +27,13 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
     /** 특정 날짜에 생성된 총 댓글 수 (대댓글 포함) */
     @Query("SELECT COUNT(c) FROM CommentEntity c WHERE FUNCTION('DATE', c.createdAt) = :date")
     long countByCreatedAt(@Param("date") LocalDate date);
+
+    /**
+     * 가장 많이 댓글이 달린 콘텐츠 ID와 댓글 수를 페이지네이션하여 조회
+     */
+    @Query("SELECT new com.example.devnote.dto.RankedContentIdDto(c.contentId, COUNT(c.id)) " +
+            "FROM CommentEntity c " +
+            "GROUP BY c.contentId " +
+            "ORDER BY COUNT(c.id) DESC, c.contentId ASC")
+    Page<RankedContentIdDto> findTopCommentedContentIds(Pageable pageable);
 }

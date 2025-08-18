@@ -20,11 +20,25 @@ public interface ContentRepository extends JpaRepository<ContentEntity, Long>, J
     long countByCreatedAt(@Param("date") LocalDate date);
 
     /**
-     * 모든 카테고리에 대해 콘텐츠 개수를 집계하여 반환
+     * 특정 카테고리에 속한 모든 콘텐츠 목록을 조회
+     */
+    List<ContentEntity> findByCategory(String category);
+
+    /**
+     * 모든 카테고리에 대해 콘텐츠 개수를 집계하여 반환 (TBC 포함)
      */
     @Query("SELECT new com.example.devnote.processor_service.dto.CategoryCountDto(c.category, COUNT(c.id)) " +
             "FROM ContentEntity c " +
-            "WHERE c.category IS NOT NULL AND c.category != 'TBC' " +
+            "WHERE c.category IS NOT NULL " + // TBC 제외 조건 삭제
             "GROUP BY c.category")
     List<CategoryCountDto> countByCategory();
+
+    /**
+     * 특정 source의 모든 카테고리에 대해 콘텐츠 개수를 집계하여 반환 (TBC 포함)
+     */
+    @Query("SELECT new com.example.devnote.processor_service.dto.CategoryCountDto(c.category, COUNT(c.id)) " +
+            "FROM ContentEntity c " +
+            "WHERE c.source = :source AND c.category IS NOT NULL " +
+            "GROUP BY c.category")
+    List<CategoryCountDto> countByCategoryAndSource(@Param("source") String source);
 }

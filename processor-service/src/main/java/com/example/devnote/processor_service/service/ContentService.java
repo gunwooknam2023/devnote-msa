@@ -296,18 +296,25 @@ public class ContentService {
     }
 
     /**
-     * 카테고리별 콘텐츠 개수 조회
+     * 카테고리별 콘텐츠 개수 조회 (source별 필터링 기능 추가)
      */
-    public Map<String, Long> getCategoryCounts() {
-        // 1. DB에서 카테고리별 개수를 조회
-        List<CategoryCountDto> counts = contentRepository.countByCategory();
+    public Map<String, Long> getCategoryCounts(String source) {
+        List<CategoryCountDto> counts;
+        long totalCount;
 
-        // DB에서 source가 "YOUTUBE"인 콘텐츠의 개수 조회
-        long totalCount = contentRepository.countBySource("YOUTUBE");
+        // source 파라미터 유무에 따라 분기
+        if (source != null && !source.isBlank()) {
+            // source가 있을 경우: 해당 source로 필터링
+            counts = contentRepository.countByCategoryAndSource(source.toUpperCase());
+            totalCount = contentRepository.countBySource(source.toUpperCase());
+        } else {
+            // source가 없을 경우: 전체 집계
+            counts = contentRepository.countByCategory();
+            totalCount = contentRepository.count();
+        }
 
         // 결과를 Map으로 변환
         Map<String, Long> categoryCounts = new LinkedHashMap<>();
-
         categoryCounts.put("전체", totalCount);
         for (CategoryCountDto dto : counts) {
             categoryCounts.put(dto.getCategory(), dto.getCount());

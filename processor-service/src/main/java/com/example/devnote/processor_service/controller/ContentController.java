@@ -120,10 +120,13 @@ public class ContentController {
 
     /**
      * 카테고리별 콘텐츠 개수 조회
+     * @param source (선택) YOUTUBE 또는 NEWS 로 필터링
      */
     @GetMapping("/category-counts")
-    public ResponseEntity<ApiResponseDto<Map<String, Long>>> getCategoryCounts() {
-        Map<String, Long> counts = contentService.getCategoryCounts();
+    public ResponseEntity<ApiResponseDto<Map<String, Long>>> getCategoryCounts(
+            @RequestParam(required = false) String source
+    ) {
+        Map<String, Long> counts = contentService.getCategoryCounts(source);
         return ResponseEntity.ok(
                 ApiResponseDto.<Map<String, Long>>builder()
                         .message("Fetched content counts by category")

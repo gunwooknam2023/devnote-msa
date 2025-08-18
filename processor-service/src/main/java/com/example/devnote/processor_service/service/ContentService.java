@@ -109,16 +109,35 @@ public class ContentService {
             String title,
             String sortOrder
     ) {
-        // Sort 설정 (publishedAt 기준)
-        Sort sort = Sort.by("publishedAt");
+        Sort sort;
 
-        if("newest".equalsIgnoreCase(sortOrder)) {
-            sort = sort.descending();
-        } else if ("oldest".equalsIgnoreCase(sortOrder)) {
-            sort = sort.ascending();
-        } else {
-            log.warn("Unkown sort order '{}', defaulting to newst", sortOrder);
-            sort = sort.descending();
+        // sortOrder 파라미터에 따라 분기하여 Sort 객체를 생성합니다.
+        switch (sortOrder.toLowerCase()) {
+            case "oldest":
+                // 오래된 순 (publishedAt 오름차순)
+                sort = Sort.by("publishedAt").ascending();
+                break;
+            case "views_desc":
+                // 로컬 조회수 높은 순 (localViewCount 내림차순)
+                sort = Sort.by("localViewCount").descending();
+                break;
+            case "views_asc":
+                // 로컬 조회수 낮은 순 (localViewCount 오름차순)
+                sort = Sort.by("localViewCount").ascending();
+                break;
+            case "youtube_views_desc":
+                // 유튜브 조회수 높은 순 (viewCount 내림차순)
+                sort = Sort.by("viewCount").descending();
+                break;
+            case "youtube_views_asc":
+                // 유튜브 조회수 낮은 순 (viewCount 오름차순)
+                sort = Sort.by("viewCount").ascending();
+                break;
+            case "newest":
+            default:
+                // 최신 순 (publishedAt 내림차순) 및 기본값
+                sort = Sort.by("publishedAt").descending();
+                break;
         }
 
         // Pageable

@@ -31,4 +31,8 @@ public class ContentDto {
     private Long durationSeconds;       // 영상 길이(초)
     private String videoForm;           // "SHORTS" or "LONGFORM"
     private Long subscriberCount;       // 구독자 수
+
+    // 찜 수, 댓글 수
+    private Long favoriteCount;
+    private Long commentCount;
 }

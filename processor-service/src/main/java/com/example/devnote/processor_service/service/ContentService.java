@@ -187,6 +187,8 @@ public class ContentService {
                 .durationSeconds(e.getDurationSeconds())
                 .videoForm(e.getVideoForm())
                 .subscriberCount(e.getSubscriberCount())
+                .favoriteCount(e.getFavoriteCount())
+                .commentCount(e.getCommentCount())
                 .createdAt(e.getCreatedAt())
                 .build();
     }

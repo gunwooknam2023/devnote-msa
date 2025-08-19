@@ -48,6 +48,14 @@ public class ContentEntity {
     @Builder.Default
     private Long localViewCount = 0L;
 
+    @Column(name = "favorite_count", nullable = false)
+    @Builder.Default
+    private Long favoriteCount = 0L;
+
+    @Column(name = "comment_count", nullable = false)
+    @Builder.Default
+    private Long commentCount = 0L;
+
     private Long viewCount;
     private Long durationSeconds;
     private String thumbnailUrl;

@@ -1,6 +1,7 @@
 package com.example.devnote.processor_service.config;
 
 import com.example.devnote.processor_service.dto.ContentMessageDto;
+import com.example.devnote.processor_service.dto.ContentStatsUpdateDto;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +55,28 @@ public class KafkaConsumerConfig {
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         log.info("KafkaListenerContainerFactory configured");
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, ContentStatsUpdateDto> statsUpdateConsumerFactory() {
+        Map<String, Object> cfg = new HashMap<>(props.buildConsumerProperties());
+        // 통계 업데이트용 Consumer Group ID를 별도로 지정
+        cfg.put(ConsumerConfig.GROUP_ID_CONFIG, "processor-service-group-stats");
+
+        JsonDeserializer<ContentStatsUpdateDto> deserializer =
+                new JsonDeserializer<>(ContentStatsUpdateDto.class, false);
+        deserializer.addTrustedPackages("*");
+
+        return new DefaultKafkaConsumerFactory<>(cfg, new StringDeserializer(), deserializer);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, ContentStatsUpdateDto>
+    statsUpdateContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, ContentStatsUpdateDto> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(statsUpdateConsumerFactory());
         return factory;
     }
 }

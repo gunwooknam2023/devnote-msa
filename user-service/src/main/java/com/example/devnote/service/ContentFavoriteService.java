@@ -1,11 +1,13 @@
 package com.example.devnote.service;
 
+import com.example.devnote.dto.ContentStatsUpdateDto;
 import com.example.devnote.entity.FavoriteContent;
 import com.example.devnote.entity.User;
 import com.example.devnote.repository.FavoriteContentRepository;
 import com.example.devnote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,7 @@ public class ContentFavoriteService {
     private final FavoriteContentRepository favRepo;
     private final UserRepository userRepository;
     private final WebClient apiGatewayClient;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     /** 현재 요청 유저 ID (JWT subject = email) */
     private Long currentUserId() {
@@ -68,6 +71,13 @@ public class ContentFavoriteService {
                 .userId(userId)
                 .contentId(contentId)
                 .build());
+
+        // 찜 추가(+1) 이벤트
+        ContentStatsUpdateDto message = ContentStatsUpdateDto.builder()
+                .contentId(contentId)
+                .favoriteDelta(1)
+                .build();
+        kafkaTemplate.send("content-stats-update", message);
     }
 
     /** 콘텐츠 찜 삭제 */
@@ -82,6 +92,13 @@ public class ContentFavoriteService {
                 ));
 
         favRepo.delete(fav);
+
+        // 찜 삭제(-1) 이벤트
+        ContentStatsUpdateDto message = ContentStatsUpdateDto.builder()
+                .contentId(contentId)
+                .favoriteDelta(-1)
+                .build();
+        kafkaTemplate.send("content-stats-update", message);
     }
 
     /** 찜한 콘텐츠 목록 조회 */

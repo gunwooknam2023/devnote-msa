@@ -3,6 +3,7 @@ package com.example.devnote.service;
 import com.example.devnote.dto.CommentRequestDto;
 import com.example.devnote.dto.CommentResponseDto;
 import com.example.devnote.dto.CommentUpdateDto;
+import com.example.devnote.dto.ContentStatsUpdateDto;
 import com.example.devnote.entity.CommentEntity;
 import com.example.devnote.entity.User;
 import com.example.devnote.repository.CommentRepository;
@@ -31,7 +32,7 @@ public class CommentService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final WebClient apiGatewayClient;
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     /** 댓글 생성 (회원/비회원 공용) */
     @Transactional
@@ -85,6 +86,13 @@ public class CommentService {
                 .build();
 
         ent = commentRepository.save(ent);
+
+        // 댓글 추가(+1) 이벤트
+        ContentStatsUpdateDto message = ContentStatsUpdateDto.builder()
+                .contentId(req.getContentId())
+                .commentDelta(1)
+                .build();
+        kafkaTemplate.send("content-stats-update", message);
 
         // 신규 댓글 생성 이벤트 발행
         kafkaTemplate.send("comment.created", String.valueOf(ent.getId()));
@@ -172,6 +180,13 @@ public class CommentService {
                         HttpStatus.UNAUTHORIZED, "Invalid password");
             }
         }
+
+        // 댓글 삭제(-1) 이벤트
+        ContentStatsUpdateDto message = ContentStatsUpdateDto.builder()
+                .contentId(ent.getContentId())
+                .commentDelta(-1)
+                .build();
+        kafkaTemplate.send("content-stats-update", message);
 
         // 회원 댓글인 경우 활동점수 감소
         if (ent.getUserId() != null) {

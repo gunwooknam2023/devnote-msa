@@ -98,71 +98,42 @@ public class ContentService {
     }
 
     /**
-     * 페이지네이션 + 필터 + 정렬 적용된 콘텐츠 조회
+     * 페이지네이션 + 필터 + 정렬 적용된 콘텐츠 조회 (모든 정렬을 DB에서 처리)
      */
     public PageResponseDto<ContentDto> getContents(
-            int page,
-            int size,
-            String source,
-            String category,
-            String channelId,
-            String title,
-            String sortOrder
+            int page, int size, String source, String category, String channelId, String title, String sortOrder
     ) {
-        Sort sort;
-
-        // sortOrder 파라미터에 따라 분기하여 Sort 객체를 생성합니다.
-        switch (sortOrder.toLowerCase()) {
-            case "oldest":
-                // 오래된 순 (publishedAt 오름차순)
-                sort = Sort.by("publishedAt").ascending();
-                break;
-            case "views_desc":
-                // 로컬 조회수 높은 순 (localViewCount 내림차순)
-                sort = Sort.by("localViewCount").descending();
-                break;
-            case "views_asc":
-                // 로컬 조회수 낮은 순 (localViewCount 오름차순)
-                sort = Sort.by("localViewCount").ascending();
-                break;
-            case "youtube_views_desc":
-                // 유튜브 조회수 높은 순 (viewCount 내림차순)
-                sort = Sort.by("viewCount").descending();
-                break;
-            case "youtube_views_asc":
-                // 유튜브 조회수 낮은 순 (viewCount 오름차순)
-                sort = Sort.by("viewCount").ascending();
-                break;
-            case "newest":
-            default:
-                // 최신 순 (publishedAt 내림차순) 및 기본값
-                sort = Sort.by("publishedAt").descending();
-                break;
-        }
-
-        // Pageable
+        // 모든 정렬 조건을 DB에서 처리하도록 Sort 객체 생성
+        Sort sort = buildSort(sortOrder);
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        // 동적 필터링
+        // Specification으로 동적 필터링 조건 생성
         Specification<ContentEntity> spec = buildSpecification(source, category, channelId, title);
 
-        // 조회
+        // DB에서 필터링 및 정렬된 데이터 조회
         Page<ContentEntity> entityPage = contentRepository.findAll(spec, pageable);
 
-        // Dto 변환
-        List<ContentDto> dtos = entityPage.stream()
-                .map(this::toDto)
-                .toList();
-
-        // PageResponseDto 래핑
-        return PageResponseDto.<ContentDto>builder()
-                .items(dtos)
-                .page(entityPage.getNumber())
-                .size(entityPage.getSize())
-                .totalElements(entityPage.getTotalElements())
-                .totalPages(entityPage.getTotalPages())
-                .build();
+        // DTO로 변환하여 최종 응답 반환
+        List<ContentDto> dtos = entityPage.stream().map(this::toDto).toList();
+        return new PageResponseDto<>(dtos, entityPage.getNumber(), entityPage.getSize(), entityPage.getTotalElements(), entityPage.getTotalPages());
     }
+
+    /**
+     * sortOrder 문자열에 따라 Sort 객체를 생성하는 헬퍼 메서드
+     */
+    private Sort buildSort(String sortOrder) {
+        return switch (sortOrder.toLowerCase()) {
+            case "oldest" -> Sort.by("publishedAt").ascending();
+            case "views_desc" -> Sort.by("localViewCount").descending();
+            case "views_asc" -> Sort.by("localViewCount").ascending();
+            case "youtube_views_desc" -> Sort.by("viewCount").descending();
+            case "youtube_views_asc" -> Sort.by("viewCount").ascending();
+            case "favorites_desc" -> Sort.by("favoriteCount").descending();
+            case "comments_desc" -> Sort.by("commentCount").descending();
+            default -> Sort.by("publishedAt").descending();
+        };
+    }
+
 
     /**
      * 조건에 따른 JPA Specification 생성

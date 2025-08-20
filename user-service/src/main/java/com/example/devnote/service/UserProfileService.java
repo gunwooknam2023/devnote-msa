@@ -9,16 +9,19 @@ import com.example.devnote.repository.FavoriteChannelRepository;
 import com.example.devnote.repository.FavoriteContentRepository;
 import com.example.devnote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserProfileService {
     private final UserRepository userRepo;
     private final FavoriteContentRepository favContentRepo;
@@ -167,15 +170,27 @@ public class UserProfileService {
                 .toList();
 
         // 2) 콘텐츠 정보 조회 (제목 + 소스)
-        ApiResponseDto<ContentDto> cr = apiGatewayClient.get()
-                .uri("/api/v1/contents/{id}", e.getContentId())
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ContentDto>>() {
-                })
-                .block();
-        String contentTitle = cr.getData().getTitle();
-        String contentSource = cr.getData().getSource();
-        String contentLink   = cr.getData().getLink();
+        String contentTitle = "[삭제된 콘텐츠]";
+        String contentSource = "-";
+        String contentLink = "#";
+
+        try {
+            // 콘텐츠 정보 조회 (제목 + 소스)
+            ApiResponseDto<ContentDto> cr = apiGatewayClient.get()
+                    .uri("/api/v1/contents/{id}", e.getContentId())
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ContentDto>>() {})
+                    .block();
+
+            if (cr != null && cr.getData() != null) {
+                contentTitle = cr.getData().getTitle();
+                contentSource = cr.getData().getSource();
+                contentLink = cr.getData().getLink();
+            }
+        } catch (WebClientResponseException.NotFound ex) {
+            // 콘텐츠를 찾지 못하면(404) 로그만 남기고 기본값으로 넘어감
+            log.warn("Content not found for commentId {}: contentId={}. Skipping details.", e.getId(), e.getContentId());
+        }
 
         // userId가 null(익명)일 수 있으므로 null-safe
         String upic = null;

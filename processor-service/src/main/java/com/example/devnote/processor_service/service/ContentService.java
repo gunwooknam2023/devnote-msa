@@ -101,14 +101,14 @@ public class ContentService {
      * 페이지네이션 + 필터 + 정렬 적용된 콘텐츠 조회 (모든 정렬을 DB에서 처리)
      */
     public PageResponseDto<ContentDto> getContents(
-            int page, int size, String source, String category, String channelId, String title, String sortOrder
+            int page, int size, String source, String category, String channelId, String channelTitle, String title, String sortOrder
     ) {
         // 모든 정렬 조건을 DB에서 처리하도록 Sort 객체 생성
         Sort sort = buildSort(sortOrder);
         Pageable pageable = PageRequest.of(page, size, sort);
 
         // Specification으로 동적 필터링 조건 생성
-        Specification<ContentEntity> spec = buildSpecification(source, category, channelId, title);
+        Specification<ContentEntity> spec = buildSpecification(source, category, channelId, channelTitle, title);
 
         // DB에서 필터링 및 정렬된 데이터 조회
         Page<ContentEntity> entityPage = contentRepository.findAll(spec, pageable);
@@ -142,6 +142,7 @@ public class ContentService {
             String source,
             String category,
             String channelId,
+            String channelTitle,
             String title
     ) {
         return (root, query, cb) -> {
@@ -155,6 +156,9 @@ public class ContentService {
             }
             if (channelId != null && !channelId.isBlank()) {
                 predicates.add(cb.equal(root.get("channelId"), channelId));
+            }
+            if (channelTitle != null && !channelTitle.isBlank()) {
+                predicates.add(cb.equal(root.get("channelTitle"), channelTitle));
             }
             if (title != null && !title.isBlank()) {
                 predicates.add(cb.like(

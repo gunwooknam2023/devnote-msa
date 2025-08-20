@@ -10,4 +10,5 @@ public interface ChannelSubscriptionRepository extends JpaRepository<ChannelSubs
     List<ChannelSubscription> findByInitialLoadedFalse();
     List<ChannelSubscription> findByInitialLoadedTrue();
     Optional<ChannelSubscription> findByChannelId(String channelId);
+    List<ChannelSubscription> findBySource(String source);
 }

@@ -8,26 +8,9 @@ import java.util.List;
 @Component
 @ConfigurationProperties(prefix = "news")
 public class NewsProperties {
-    private List<String> feeds; // 고정 RSS URL 목록
-    private Boan boan; // boannews 관련 설정
-    private long fetchDelay; // 뉴스 fetch 스케줄 딜레이 (ms)
 
-
-    public List<String> getFeeds() {
-        return feeds;
-    }
-
-    public void setFeeds(List<String> feeds) {
-        this.feeds = feeds;
-    }
-
-    public Boan getBoan() {
-        return boan;
-    }
-
-    public void setBoan(Boan boan) {
-        this.boan = boan;
-    }
+    private long fetchDelay;
+    private List<Source> sources;
 
     public long getFetchDelay() {
         return fetchDelay;
@@ -37,24 +20,39 @@ public class NewsProperties {
         this.fetchDelay = fetchDelay;
     }
 
-    public static class Boan {
-        private String baseUrl; // boannews base-url
-        private List<Integer> mkinds; // mkind 리스트
+    public List<Source> getSources() {
+        return sources;
+    }
 
-        public String getBaseUrl() {
-            return baseUrl;
+    public void setSources(List<Source> sources) {
+        this.sources = sources;
+    }
+
+    /**
+     * 각 언론사(Source)의 설정을 담는 내부 정적 클래스
+     */
+    public static class Source {
+        private String name;
+        private String thumbnailUrl;
+        private List<String> feeds;
+
+        public String getName() {
+            return name;
         }
-
-        public void setBaseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
+        public void setName(String name) {
+            this.name = name;
         }
-
-        public List<Integer> getMkinds() {
-            return mkinds;
+        public String getThumbnailUrl() {
+            return thumbnailUrl;
         }
-
-        public void setMkinds(List<Integer> mkinds) {
-            this.mkinds = mkinds;
+        public void setThumbnailUrl(String thumbnailUrl) {
+            this.thumbnailUrl = thumbnailUrl;
+        }
+        public List<String> getFeeds() {
+            return feeds;
+        }
+        public void setFeeds(List<String> feeds) {
+            this.feeds = feeds;
         }
     }
 }

@@ -75,4 +75,16 @@ public class ProfileController {
                         .build()
         );
     }
+
+    /** 현재 로그인한 사용자의 회원 탈퇴를 처리 */
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponseDto<Void>> withdraw() {
+        profileService.withdrawCurrentUser();
+        return ResponseEntity.ok(
+                ApiResponseDto.<Void>builder()
+                        .message("회원 탈퇴가 성공적으로 처리되었습니다. 그동안 서비스를 이용해주셔서 감사합니다.")
+                        .statusCode(200)
+                        .build()
+        );
+    }
 }

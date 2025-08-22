@@ -87,4 +87,17 @@ public class ProfileController {
                         .build()
         );
     }
+
+    /** 임시 토큰을 사용하여 탈퇴한 사용자의 정보를 조회 */
+    @GetMapping("/withdrawn-info")
+    public ResponseEntity<ApiResponseDto<WithdrawnUserDto>> getWithdrawnInfo(@RequestParam String token) {
+        WithdrawnUserDto withdrawnInfoDto = profileService.getWithdrawnUserInfoByToken(token);
+        return ResponseEntity.ok(
+                ApiResponseDto.<WithdrawnUserDto>builder()
+                        .message("Fetched withdrawn user info successfully.")
+                        .statusCode(HttpStatus.OK.value())
+                        .data(withdrawnInfoDto)
+                        .build()
+        );
+    }
 }

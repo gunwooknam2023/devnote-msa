@@ -276,6 +276,8 @@ public class CommentService {
                     .createdAt(e.getCreatedAt())
                     .updatedAt(e.getUpdatedAt())
                     .replies(new ArrayList<>())
+                    .likeCount(e.getLikeCount())
+                    .dislikeCount(e.getDislikeCount())
                     .build());
         }
 
@@ -318,6 +320,8 @@ public class CommentService {
                 .createdAt(e.getCreatedAt())
                 .updatedAt(e.getUpdatedAt())
                 .replies(replies)
+                .likeCount(e.getLikeCount())
+                .dislikeCount(e.getDislikeCount())
                 .build();
         return dto;
     }

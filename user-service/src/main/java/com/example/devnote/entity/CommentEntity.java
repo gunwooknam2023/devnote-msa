@@ -44,6 +44,14 @@ public class CommentEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "like_count", nullable = false)
+    @Builder.Default
+    private int likeCount = 0;
+
+    @Column(name = "dislike_count", nullable = false)
+    @Builder.Default
+    private int dislikeCount = 0;
+
     /**
      * 소프트 삭제 여부
      * - true: 내용만 삭제, 나머지 정보는 유지

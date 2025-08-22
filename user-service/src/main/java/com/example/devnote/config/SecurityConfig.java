@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/api/v1/users/*/profile").permitAll()
                         .requestMatchers("/api/v1/users/withdrawn-info").permitAll()
+                        .requestMatchers("/api/v1/users/reports/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

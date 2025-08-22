@@ -1,5 +1,6 @@
 package com.example.devnote.service;
 
+import com.example.devnote.config.JwtTokenProvider;
 import com.example.devnote.dto.*;
 import com.example.devnote.entity.CommentEntity;
 import com.example.devnote.entity.FavoriteContent;
@@ -9,11 +10,13 @@ import com.example.devnote.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -32,6 +35,7 @@ public class UserProfileService {
     private final CommentService commentService;
     private final ContentFavoriteService contentFavoriteService;
     private final ChannelFavoriteService channelFavoriteService;
+    private final JwtTokenProvider tokenProvider;
 
 
     private User currentUser() {
@@ -258,5 +262,18 @@ public class UserProfileService {
                 .contentSource(contentSource)
                 .contentLink(contentLink)
                 .build();
+    }
+
+    /** 임시 상태 토큰을 검증하고, 유효하다면 탈퇴 정보를 조회 */
+    @Transactional(readOnly = true)
+    public WithdrawnUserDto getWithdrawnUserInfoByToken(String token) {
+        if (token == null || !tokenProvider.validateToken(token)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다.");
+        }
+        String email = tokenProvider.getUsername(token);
+
+        return withdrawnUserRepo.findByEmail(email)
+                .map(WithdrawnUserDto::from)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "탈퇴 정보를 찾을 수 없습니다."));
     }
 }

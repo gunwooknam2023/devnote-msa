@@ -65,4 +65,15 @@ public class JwtTokenProvider {
                 .getBody();
         return claims.getSubject();
     }
+
+    /** 탈퇴 정보 조회를 위한 5분 유효기간의 임시 상태 토큰을 생성 */
+    public String createStatusToken(String email) {
+        Date now = new Date();
+        return Jwts.builder()
+                .setSubject(email)
+                .setIssuedAt(now)
+                .setExpiration(new Date(now.getTime() + (5 * 60 * 1000))) // 5분
+                .signWith(SignatureAlgorithm.HS256, secretKey)
+                .compact();
+    }
 }

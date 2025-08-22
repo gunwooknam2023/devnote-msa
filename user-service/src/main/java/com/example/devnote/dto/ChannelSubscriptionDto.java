@@ -30,4 +30,7 @@ public class ChannelSubscriptionDto {
 
     /** 구독자 수 */
     private Long subscriberCount;
+
+    /** 찜 수 */
+    private Long favoriteCount;
 }

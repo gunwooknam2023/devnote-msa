@@ -63,4 +63,13 @@ public class ContentDto {
 
     /** 구독자 수 */
     private Long subscriberCount;
+
+    /** 찜 수 */
+    private Long favoriteCount;
+
+    /** 댓글 수 */
+    private Long commentCount;
+
+    /** 로컬 영상 조회수 */
+    private Long localViewCount;
 }

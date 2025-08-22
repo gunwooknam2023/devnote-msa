@@ -41,4 +41,9 @@ public class ChannelSubscription {
     /** 소스 구분 ("YOUTUBE" 또는 "NEWS") */
     @Column(length = 20)
     private String source;
+
+    /** 찜 수 */
+    @Column(name = "favorite_count", nullable = false)
+    @Builder.Default
+    private Long favoriteCount = 0L;
 }

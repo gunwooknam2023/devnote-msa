@@ -26,4 +26,6 @@ public class CommentResponseDto {
     private Instant createdAt;
     private Instant updatedAt;
     private List<CommentResponseDto> replies;
+    private int likeCount;
+    private int dislikeCount;
 }

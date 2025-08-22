@@ -1,11 +1,13 @@
 package com.example.devnote.service;
 
+import com.example.devnote.dto.ChannelStatsUpdateDto;
 import com.example.devnote.entity.FavoriteChannel;
 import com.example.devnote.entity.User;
 import com.example.devnote.repository.FavoriteChannelRepository;
 import com.example.devnote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,7 @@ public class ChannelFavoriteService {
     private final FavoriteChannelRepository favRepo;
     private final UserRepository userRepository;
     private final WebClient apiGatewayClient;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     /** 현재 요청 유저 ID (JWT subject = email) */
     private Long currentUserId() {
@@ -54,7 +57,6 @@ public class ChannelFavoriteService {
     @Transactional
     public void add(Long chSubId) {
         Long userId = currentUserId();
-
         assertChannelExists(chSubId);
 
         if (favRepo.findByUserIdAndChannelSubscriptionId(userId, chSubId).isPresent()) {
@@ -68,6 +70,13 @@ public class ChannelFavoriteService {
                 .userId(userId)
                 .channelSubscriptionId(chSubId)
                 .build());
+
+        // 찜 추가(+1) 이벤트
+        ChannelStatsUpdateDto message = ChannelStatsUpdateDto.builder()
+                .channelSubscriptionId(chSubId)
+                .favoriteDelta(1)
+                .build();
+        kafkaTemplate.send("channel-stats-update", message);
     }
 
     /** 채널 찜 삭제 */
@@ -82,6 +91,13 @@ public class ChannelFavoriteService {
                 ));
 
         favRepo.delete(fav);
+
+        // 찜 삭제(-1) 이벤트
+        ChannelStatsUpdateDto message = ChannelStatsUpdateDto.builder()
+                .channelSubscriptionId(chSubId)
+                .favoriteDelta(-1)
+                .build();
+        kafkaTemplate.send("channel-stats-update", message);
     }
 
     /** 찜한 채널 목록 조회 */

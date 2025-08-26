@@ -60,7 +60,7 @@ public class InquiryService {
                 .passwordHash(user == null ? passwordEncoder.encode(dto.getPassword()) : null)
                 .title(dto.getTitle())
                 .content(dto.getContent())
-                .isPublic(dto.isPublic())
+                .isPublic(dto.getIsPublic())
                 .build();
 
         // 비회원 정보 유효성 검사

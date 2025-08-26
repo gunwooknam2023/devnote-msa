@@ -32,5 +32,5 @@ public class InquiryRequestDto {
     private List<String> imageUrls;
 
     /** 공개글 여부 (기본값: 공개) */
-    private boolean isPublic = true;
+    private Boolean isPublic = true;
 }

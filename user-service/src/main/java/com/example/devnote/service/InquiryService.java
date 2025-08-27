@@ -4,7 +4,6 @@ import com.example.devnote.dto.InquiryDetailResponseDto;
 import com.example.devnote.dto.InquiryListResponseDto;
 import com.example.devnote.dto.InquiryRequestDto;
 import com.example.devnote.entity.Inquiry;
-import com.example.devnote.entity.InquiryImage;
 import com.example.devnote.entity.User;
 import com.example.devnote.repository.InquiryRepository;
 import com.example.devnote.repository.UserRepository;
@@ -19,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collections;
@@ -35,9 +35,19 @@ public class InquiryService {
     private final InquiryRepository inquiryRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final FileStorageService fileStorageService;
 
     @Value("${app.admin-email}")
     private String adminEmail;
+
+    /**
+     * 이미지 파일을 서버에 저장하고 URL을 반환하는 메서드
+     * @param imageFile 컨트롤러로부터 받은 이미지 파일
+     * @return 서버에 저장된 후의 접근 URL
+     */
+    public String uploadImage(MultipartFile imageFile) {
+        return fileStorageService.storeFile(imageFile);
+    }
 
     /**
      * 문의사항 생성 (회원/비회원 공용)
@@ -66,14 +76,6 @@ public class InquiryService {
         // 비회원 정보 유효성 검사
         if(user == null && (dto.getUsername() == null || dto.getPassword() == null)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "비회원 문의는 사용자명과 비밀번호가 필수입니다.");
-        }
-
-        // 3. 첨부된 이미지 URL이 있다면 InquiryImage 엔티티로 변환하여 추가
-        if (dto.getImageUrls() != null && !dto.getImageUrls().isEmpty()) {
-            dto.getImageUrls().forEach(imageUrl -> {
-                InquiryImage image = InquiryImage.builder().imageUrl(imageUrl).build();
-                inquiry.addImage(image);
-            });
         }
 
         Inquiry savedInquiry = inquiryRepository.save(inquiry);
@@ -194,7 +196,6 @@ public class InquiryService {
                 .userPicture(author != null ? author.getPicture() : null)
                 .answered(inquiry.isAnswered())
                 .isPublic(inquiry.isPublic())
-                .imageUrls(inquiry.getImages().stream().map(InquiryImage::getImageUrl).collect(Collectors.toList()))
                 .createdAt(inquiry.getCreatedAt())
                 .updatedAt(inquiry.getUpdatedAt())
                 .build();
@@ -205,6 +206,12 @@ public class InquiryService {
      */
     private InquiryListResponseDto toListDto(Inquiry inquiry, User author) {
         String displayTitle = inquiry.isPublic() ? inquiry.getTitle() : "비공개 게시글입니다.";
+
+        // 이미지 존재 여부 체크 (마크다운 이미지 패턴)
+        boolean hasImages = inquiry.getContent() != null &&
+                inquiry.getContent().contains("![") &&
+                inquiry.getContent().contains("](");
+
         return InquiryListResponseDto.builder()
                 .id(inquiry.getId())
                 .title(displayTitle)
@@ -214,6 +221,7 @@ public class InquiryService {
                 .answered(inquiry.isAnswered())
                 .isPublic(inquiry.isPublic())
                 .createdAt(inquiry.getCreatedAt())
+                .hasImages(hasImages)
                 .build();
     }
 }

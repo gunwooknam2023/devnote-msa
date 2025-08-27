@@ -27,10 +27,6 @@ public class InquiryRequestDto {
     @Size(max = 20, message = "비밀번호는 최대 20자까지 가능합니다.")
     private String password;
 
-    /** 이미지 URL 목록 (최대 5개) */
-    @Size(max = 5, message = "이미지는 최대 5개까지 첨부할 수 있습니다.")
-    private List<String> imageUrls;
-
     /** 공개글 여부 (기본값: 공개) */
     private Boolean isPublic = true;
 }

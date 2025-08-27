@@ -20,7 +20,6 @@ public class InquiryDetailResponseDto {
     private String userPicture;
     private boolean answered;
     private boolean isPublic;
-    private List<String> imageUrls;
     private Instant createdAt;
     private Instant updatedAt;
 }

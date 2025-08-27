@@ -54,23 +54,9 @@ public class Inquiry {
     @Builder.Default
     private boolean isPublic = true;
 
-    /**
-     * 문의에 첨부된 이미지 목록
-     * CascadeType.ALL: Inquiry 엔티티의 생명주기에 InquiryImage를 맞춤 (저장/삭제 시 함께 처리)
-     * orphanRemoval = true: Inquiry의 images 컬렉션에서 InquiryImage가 제거되면 DB에서도 삭제
-     */
-    @OneToMany(mappedBy = "inquiry", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<InquiryImage> images = new ArrayList<>();
-
     @CreationTimestamp
     private Instant createdAt;
 
     @UpdateTimestamp
     private Instant updatedAt;
-
-    public void addImage(InquiryImage image) {
-        images.add(image);
-        image.setInquiry(this);
-    }
 }

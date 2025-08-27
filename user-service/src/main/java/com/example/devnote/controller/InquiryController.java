@@ -13,6 +13,9 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/inquiries")
@@ -20,6 +23,24 @@ import org.springframework.web.bind.annotation.*;
 public class InquiryController {
 
     private final InquiryService inquiryService;
+
+    /**
+     * 에디터 내에서 사용할 이미지 단일 업로드 API
+     * 이미지를 서버에 저장하고 접근 가능한 URL을 즉시 반환
+     */
+    @PostMapping("/images")
+    public ResponseEntity<ApiResponseDto<Map<String, String>>> uploadImage(
+            @RequestParam("image") MultipartFile imageFile) {
+        String imageUrl = inquiryService.uploadImage(imageFile);
+        Map<String, String> responseData = Map.of("imageUrl", imageUrl);
+
+        return ResponseEntity.ok(
+                ApiResponseDto.<Map<String, String>>builder()
+                        .message("이미지가 성공적으로 업로드되었습니다.")
+                        .statusCode(HttpStatus.OK.value())
+                        .data(responseData)
+                        .build());
+    }
 
     /**
      * 문의사항 생성
@@ -35,7 +56,6 @@ public class InquiryController {
                         .data(responseDto)
                         .build());
     }
-
     /**
      * 문의사항 상세 조회
      */

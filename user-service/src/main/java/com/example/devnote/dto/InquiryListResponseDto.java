@@ -19,4 +19,5 @@ public class InquiryListResponseDto {
     private boolean answered;
     private boolean isPublic;
     private Instant createdAt;
+    private boolean hasImages;
 }

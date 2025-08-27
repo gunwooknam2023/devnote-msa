@@ -84,23 +84,41 @@ public class InquiryService {
      * 문의사항 상세 조회
      */
     @Transactional(readOnly = true)
-    public InquiryDetailResponseDto getInquiryDetail(Long inquiryId) {
+    public InquiryDetailResponseDto getInquiryDetail(Long inquiryId, String password) {
         Inquiry inquiry = inquiryRepository.findById(inquiryId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "문의사항을 찾을 수 없습니다."));
 
         if (!inquiry.isPublic()) {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비공개 글에 접근하려면 로그인이 필요합니다.");
-            }
-            User currentUser = userRepository.findByEmail(auth.getName())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자 정보를 찾을 수 없습니다."));
 
-            boolean isAdmin = auth.getName().equals(adminEmail);
-            boolean isAuthor = (inquiry.getUserId() != null) && inquiry.getUserId().equals(currentUser.getId());
+            if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
+                User currentUser = userRepository.findByEmail(auth.getName())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자 정보를 찾을 수 없습니다."));
 
-            if (!isAdmin && !isAuthor) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비공개 글에 접근할 권한이 없습니다.");
+                boolean isAdmin = auth.getName().equals(adminEmail);
+                boolean isAuthor = (inquiry.getUserId() != null) && inquiry.getUserId().equals(currentUser.getId());
+
+                if (isAdmin || isAuthor) {
+                } else if (inquiry.getUserId() == null) {
+                    // 비회원이 작성한 비공개 글인 경우 비밀번호 검증
+                    if (password == null || !passwordEncoder.matches(password, inquiry.getPasswordHash())) {
+                        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다.");
+                    }
+                } else {
+                    // 회원이 작성한 비공개 글에 권한이 없는 경우
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비공개 글에 접근할 권한이 없습니다.");
+                }
+            } else {
+                // 비로그인 사용자인 경우
+                if (inquiry.getUserId() != null) {
+                    // 회원이 작성한 비공개 글은 비로그인 사용자가 접근할 수 없음
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비공개 글에 접근하려면 로그인이 필요합니다.");
+                } else {
+                    // 비회원이 작성한 비공개 글은 비밀번호로 검증
+                    if (password == null || !passwordEncoder.matches(password, inquiry.getPasswordHash())) {
+                        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다.");
+                    }
+                }
             }
         }
 

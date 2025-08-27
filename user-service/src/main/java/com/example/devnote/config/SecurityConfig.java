@@ -6,6 +6,7 @@ import com.example.devnote.security.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -41,6 +42,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/oauth2/**", "/login/**", "/api/v1/auth/**", "/api/v1/comments/**", "/internal/**", "/api/v1/inquiries/**")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/notices", "/api/v1/notices/**").permitAll()
                         .requestMatchers("/api/v1/users/*/profile").permitAll()
                         .requestMatchers("/api/v1/users/withdrawn-info").permitAll()
                         .requestMatchers("/api/v1/users/reports/**").permitAll()

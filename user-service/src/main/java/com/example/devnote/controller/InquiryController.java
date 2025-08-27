@@ -40,8 +40,9 @@ public class InquiryController {
      * 문의사항 상세 조회
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponseDto<InquiryDetailResponseDto>> getInquiryDetail(@PathVariable Long id) {
-        InquiryDetailResponseDto responseDto = inquiryService.getInquiryDetail(id);
+    public ResponseEntity<ApiResponseDto<InquiryDetailResponseDto>> getInquiryDetail(@PathVariable Long id,
+                                                                                     @RequestParam(required = false) String password) {
+        InquiryDetailResponseDto responseDto = inquiryService.getInquiryDetail(id, password);
         return ResponseEntity.ok(
                 ApiResponseDto.<InquiryDetailResponseDto>builder()
                         .message("문의사항 상세 정보를 조회했습니다.")

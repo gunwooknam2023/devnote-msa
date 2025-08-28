@@ -3,6 +3,7 @@ package com.example.devnote.processor_service.controller;
 import com.example.devnote.processor_service.dto.ApiResponseDto;
 import com.example.devnote.processor_service.es.EsContent;
 import com.example.devnote.processor_service.service.ContentSearchService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,13 +24,15 @@ public class ContentSearchController {
      * 콘텐츠 검색 API
      * @param q 검색할 키워드
      * @param pageable 페이지네이션 정보 (예: /search?q=스프링&page=0&size=10)
+     *
      */
     @GetMapping
     public ResponseEntity<ApiResponseDto<Page<EsContent>>> search(
             @RequestParam("q") String q,
-            @PageableDefault(size = 24) Pageable pageable) {
+            @PageableDefault(size = 24) Pageable pageable,
+            HttpServletRequest request) {
 
-        Page<EsContent> result = contentSearchService.search(q, pageable);
+        Page<EsContent> result = contentSearchService.search(q, pageable, request);
 
         return ResponseEntity.ok(
                 ApiResponseDto.<Page<EsContent>>builder()

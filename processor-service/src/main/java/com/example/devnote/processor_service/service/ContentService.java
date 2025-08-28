@@ -5,6 +5,8 @@ import com.example.devnote.processor_service.dto.ContentDto;
 import com.example.devnote.processor_service.dto.ContentMessageDto;
 import com.example.devnote.processor_service.dto.PageResponseDto;
 import com.example.devnote.processor_service.entity.ContentEntity;
+import com.example.devnote.processor_service.es.EsContent;
+import com.example.devnote.processor_service.es.EsContentRepository;
 import com.example.devnote.processor_service.repository.ContentRepository;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,6 +43,7 @@ public class ContentService {
     private final RedisTemplate<String, Object> redis;
     private final StringRedisTemplate sredis;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final EsContentRepository esContentRepository;
 
     private static final String CACHE_PREFIX = "cache:";
     private static final String VIEW_KEY_FMT = "views:content:%d:count";
@@ -83,6 +86,11 @@ public class ContentService {
                     .build();
             ent = contentRepository.save(ent);
             log.info("Saved ContentEntity id={}", ent.getId());
+
+            // MariaDB 저장 성공 후, Elasticsearch에도 색인
+            esContentRepository.save(toEsContent(ent));
+            log.info("Indexed EsContent id={}", ent.getId());
+
 
             // 신규 콘텐츠 생성 이벤트 발행
             kafkaTemplate.send("content.created", String.valueOf(ent.getId()));
@@ -224,11 +232,12 @@ public class ContentService {
     }
 
     /**
-     * 콘텐츠 삭제
+     * 콘텐츠 삭제 + ES 문서 삭제
      */
     public void deleteById(Long id) {
         contentRepository.deleteById(id);
-        log.info("Content deleted: {}", id);
+        esContentRepository.deleteById(id);
+        log.info("Content deleted from DB and ES: {}", id);
     }
 
     /**
@@ -317,5 +326,26 @@ public class ContentService {
         }
 
         return categoryCounts;
+    }
+
+    /** ContentEntity를 EsContent로 변환하는 메서드 */
+    private EsContent toEsContent(ContentEntity e) {
+        return EsContent.builder()
+                .id(e.getId())
+                .title(e.getTitle())
+                .description(e.getDescription())
+                .channelTitle(e.getChannelTitle())
+                .category(e.getCategory())
+                .source(e.getSource())
+                .channelId(e.getChannelId())
+                .publishedAt(e.getPublishedAt())
+                .createdAt(e.getCreatedAt())
+                .viewCount(e.getViewCount())
+                .localViewCount(e.getLocalViewCount())
+                .durationSeconds(e.getDurationSeconds())
+                .subscriberCount(e.getSubscriberCount())
+                .favoriteCount(e.getFavoriteCount())
+                .commentCount(e.getCommentCount())
+                .build();
     }
 }

@@ -24,6 +24,8 @@ dependencies {
 	runtimeOnly   'org.mariadb.jdbc:mariadb-java-client'
 	// Redis 캐시
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	// Elasticsearch
+	implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
 
 	// GEMINI
 	implementation 'com.google.genai:google-genai:1.0.0'

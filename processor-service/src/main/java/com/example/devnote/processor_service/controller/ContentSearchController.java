@@ -23,16 +23,22 @@ public class ContentSearchController {
     /**
      * 콘텐츠 검색 API
      * @param q 검색할 키워드
-     * @param pageable 페이지네이션 정보 (예: /search?q=스프링&page=0&size=10)
-     *
+     * @param source 검색 대상 소스 ("YOUTUBE" 또는 "NEWS")
+     * @param category (선택) 필터링할 카테고리
+     * @param sort (선택) 정렬 옵션
+     * @param pageable 페이지네이션 정보
+     * @param request 요청 객체
      */
     @GetMapping
     public ResponseEntity<ApiResponseDto<Page<EsContent>>> search(
             @RequestParam("q") String q,
+            @RequestParam("source") String source,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "relevance") String sort,
             @PageableDefault(size = 24) Pageable pageable,
             HttpServletRequest request) {
 
-        Page<EsContent> result = contentSearchService.search(q, pageable, request);
+        Page<EsContent> result = contentSearchService.search(q, source, category, sort, pageable, request);
 
         return ResponseEntity.ok(
                 ApiResponseDto.<Page<EsContent>>builder()

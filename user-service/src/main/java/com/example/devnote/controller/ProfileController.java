@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -97,6 +98,42 @@ public class ProfileController {
                         .message("Fetched withdrawn user info successfully.")
                         .statusCode(HttpStatus.OK.value())
                         .data(withdrawnInfoDto)
+                        .build()
+        );
+    }
+
+    /**
+     * 현재 로그인된 사용자의 프로필 사진을 변경
+     * @param imageFile 새로 업로드할 이미지 파일 (multipart/form-data)
+     */
+    @PostMapping("/me/profile-image")
+    public ResponseEntity<ApiResponseDto<ProfileImageResponseDto>> updateProfileImage(
+            @RequestParam("image") MultipartFile imageFile) {
+
+        ProfileImageResponseDto responseDto = profileService.updateProfileImage(imageFile);
+
+        return ResponseEntity.ok(
+                ApiResponseDto.<ProfileImageResponseDto>builder()
+                        .message("프로필 사진이 성공적으로 변경되었습니다.")
+                        .statusCode(HttpStatus.OK.value())
+                        .data(responseDto)
+                        .build()
+        );
+    }
+
+    /**
+     * 현재 로그인된 사용자의 프로필 사진을 기본 이미지로 초기화
+     */
+    @DeleteMapping("/me/profile-image")
+    public ResponseEntity<ApiResponseDto<ProfileImageResponseDto>> resetProfileImage() {
+
+        ProfileImageResponseDto responseDto = profileService.resetProfileImage();
+
+        return ResponseEntity.ok(
+                ApiResponseDto.<ProfileImageResponseDto>builder()
+                        .message("프로필 사진이 기본 이미지로 초기화되었습니다.")
+                        .statusCode(HttpStatus.OK.value())
+                        .data(responseDto)
                         .build()
         );
     }

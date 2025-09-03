@@ -1,6 +1,7 @@
 package com.example.devnote.config;
 
 import com.example.devnote.security.CustomOAuth2UserService;
+import com.example.devnote.security.CustomOidcUserService;
 import com.example.devnote.security.OAuth2AuthenticationFailureHandler;
 import com.example.devnote.security.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtFilter;
     private final JwtRefreshFilter refreshFilter;
     private final CustomOAuth2UserService oauth2UserService;
+    private final CustomOidcUserService oidcUserService;
     private final OAuth2AuthenticationSuccessHandler successHandler;
     private final OAuth2AuthenticationFailureHandler failureHandler;
 
@@ -51,7 +53,10 @@ public class SecurityConfig {
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(a -> a.baseUri("/oauth2/authorize"))
                         .redirectionEndpoint(r -> r.baseUri("/login/oauth2/code/*"))
-                        .userInfoEndpoint(u -> u.userService(oauth2UserService))
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(oauth2UserService)   // 일반 OAuth2.0 용
+                                .oidcUserService(oidcUserService) // OIDC 용
+                        )
                         .successHandler(successHandler)
                         .failureHandler(failureHandler)
                 )

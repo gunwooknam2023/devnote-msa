@@ -10,12 +10,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.net.URLDecoder;
@@ -30,7 +33,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccessHandler {
     private final JwtTokenProvider tokenProvider;
-    private final UserRepository userRepo;
     private final StringRedisTemplate redis;
 
     /**
@@ -43,65 +45,47 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException {
-        // 1) provider
-        String reg = ((OAuth2AuthenticationToken) authentication)
-                .getAuthorizedClientRegistrationId();
 
-        // 2) attributes
-        DefaultOAuth2User principal = (DefaultOAuth2User) authentication.getPrincipal();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> attrs = principal.getAttributes();
+        // 1. Authentication 객체에서 직접 PrincipalDetails 정보 조회
+        PrincipalDetails principalDetails = (PrincipalDetails) authentication.getPrincipal();
+        User user = principalDetails.getUser(); // DB 조회 없이 바로 User 객체 사용
 
-        // 3) to DTO
-        OAuth2UserInfo info = OAuth2UserInfoFactory.get(reg, attrs);
-
-        // 4) user 저장/업데이트
-        User user = userRepo.findByProviderAndProviderId(reg, info.getId())
-                .orElseGet(() -> User.builder()
-                        .provider(reg)
-                        .providerId(info.getId())
-                        .email(info.getEmail())
-                        .name(info.getName())
-                        .picture(info.getImageUrl())
-                        .build()
-                );
-        user.setName(info.getName());
-        user.setPicture(info.getImageUrl());
-        userRepo.save(user);
-
-        // 5) JWT 발급
+        // 2. JWT 토큰을 발급
         String accessToken = tokenProvider.createAccessToken(user.getEmail());
         String refreshToken = tokenProvider.createRefreshToken(user.getEmail());
 
-        // 6) Redis에 리프레시 토큰 저장
-                String key = "refresh:" + refreshToken;
-        long expSec = tokenProvider.getRefreshValidity() / 1000;
-        redis.opsForValue().set(key, user.getEmail(), Duration.ofSeconds(expSec));
+        // 3. Redis에 리프레시 토큰을 저장
+        String redisKey = "refresh:" + refreshToken;
+        long refreshValiditySeconds = tokenProvider.getRefreshValidity() / 1000;
+        redis.opsForValue().set(redisKey, user.getEmail(), Duration.ofSeconds(refreshValiditySeconds));
 
-        // 7) HttpOnly 쿠키로 RefreshToken 세팅
-        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
-                .httpOnly(true)
-                .secure(false)
-//                .sameSite("None")
-                .path("/")
-                .maxAge(expSec)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+        // 4. HttpOnly 쿠키에 토큰을 설정
+        setTokenCookies(response, accessToken, refreshToken);
 
-        //  HttpOnly 쿠키로 AccessToken 세팅
-        long accessExpSec = tokenProvider.getAccessValidity() / 1000;
+        // 5. 프론트엔드로 리다이렉트
+        response.sendRedirect(frontendUrl);
+    }
+
+    /**
+     * Access/Refresh 토큰을 HttpOnly 쿠키로 설정하는 메서드
+     */
+    private void setTokenCookies(HttpServletResponse response, String accessToken, String refreshToken) {
+        long accessExpSeconds = tokenProvider.getAccessValidity() / 1000;
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", accessToken)
                 .httpOnly(true)
-                .secure(false)
-//                .sameSite("None")
+                .secure(false) // 운영(HTTPS) 환경에서는 true로 변경
                 .path("/")
-                .maxAge(accessExpSec)
+                .maxAge(accessExpSeconds)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
 
-        // 8) 리다이렉트
-        String next = request.getParameter("next");
-        String target = (next != null && !next.isEmpty()) ? next : frontendUrl;
-        response.sendRedirect(target);
+        long refreshExpSeconds = tokenProvider.getRefreshValidity() / 1000;
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(false) // 운영(HTTPS) 환경에서는 true로 변경
+                .path("/")
+                .maxAge(refreshExpSeconds)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
     }
 }

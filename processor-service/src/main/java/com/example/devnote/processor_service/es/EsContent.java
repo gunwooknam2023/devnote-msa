@@ -41,6 +41,18 @@ public class EsContent {
     @Field(type = FieldType.Keyword)
     private String channelId;
 
+    @Field(type = FieldType.Keyword, index = false)
+    private String link;
+
+    @Field(type = FieldType.Keyword, index = false)
+    private String channelThumbnailUrl;
+
+    @Field(type = FieldType.Keyword)
+    private String videoForm;
+
+    @Field(type = FieldType.Keyword, index = false)
+    private String thumbnailUrl;
+
     @Field(type = FieldType.Date, format = DateFormat.epoch_millis)
     private Instant publishedAt;
 

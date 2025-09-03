@@ -55,7 +55,7 @@ public class NoticeService {
     public String uploadImage(MultipartFile imageFile) {
         // 관리자만 이미지 업로드가 가능하도록 권한 확인
         getAdminUser();
-        return fileStorageService.storeFile(imageFile);
+        return fileStorageService.storeFile(imageFile, "inquiries");
     }
 
     /**

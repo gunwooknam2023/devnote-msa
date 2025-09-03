@@ -9,11 +9,13 @@ import com.example.devnote.entity.WithdrawnUser;
 import com.example.devnote.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
@@ -36,6 +38,10 @@ public class UserProfileService {
     private final ContentFavoriteService contentFavoriteService;
     private final ChannelFavoriteService channelFavoriteService;
     private final JwtTokenProvider tokenProvider;
+    private final FileStorageService fileStorageService;
+
+    @Value("${app.default-profile-image-url}")
+    private String defaultProfileImageUrl;
 
 
     private User currentUser() {
@@ -275,5 +281,53 @@ public class UserProfileService {
         return withdrawnUserRepo.findByEmail(email)
                 .map(WithdrawnUserDto::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "탈퇴 정보를 찾을 수 없습니다."));
+    }
+
+    /**
+     * 현재 로그인된 사용자의 프로필 사진을 업로드된 파일로 변경
+     * @param file 새로 업로드된 이미지 파일
+     * @return 새로 업데이트된 프로필 사진 URL을 담은 DTO
+     */
+    @Transactional
+    public ProfileImageResponseDto updateProfileImage(MultipartFile file) {
+        User currentUser = currentUser();
+        String oldImageUrl = currentUser.getPicture();
+
+        // 1. 새 이미지를 'profile' 하위 폴더에 저장
+        String newImageUrl = fileStorageService.storeFile(file, "profile");
+
+        // 2. 사용자의 picture 필드를 새 이미지 URL로 업데이트하고 DB에 저장
+        currentUser.setPicture(newImageUrl);
+        userRepo.save(currentUser);
+        log.info("사용자 ID {}의 프로필 사진이 업데이트되었습니다: {}", currentUser.getId(), newImageUrl);
+
+        // 3. 이전 이미지가 기본 이미지가 아니었다면, 서버에서 이전 이미지 파일을 삭제
+        if (oldImageUrl != null && !oldImageUrl.equals(defaultProfileImageUrl)) {
+            fileStorageService.deleteFile(oldImageUrl);
+        }
+
+        return new ProfileImageResponseDto(newImageUrl);
+    }
+
+    /**
+     * 현재 로그인된 사용자의 프로필 사진을 기본 이미지로 변경
+     * @return 기본 프로필 사진 URL을 담은 DTO
+     */
+    @Transactional
+    public ProfileImageResponseDto resetProfileImage() {
+        User currentUser = currentUser();
+        String oldImageUrl = currentUser.getPicture();
+
+        // 1. 사용자의 picture 필드를 기본 이미지 URL로 업데이트하고 DB에 저장
+        currentUser.setPicture(defaultProfileImageUrl);
+        userRepo.save(currentUser);
+        log.info("사용자 ID {}의 프로필 사진이 기본 이미지로 초기화되었습니다.", currentUser.getId());
+
+        // 2. 이전 이미지가 기본 이미지가 아니었다면, 서버에서 이전 이미지 파일을 삭제
+        if (oldImageUrl != null && !oldImageUrl.equals(defaultProfileImageUrl)) {
+            fileStorageService.deleteFile(oldImageUrl);
+        }
+
+        return new ProfileImageResponseDto(defaultProfileImageUrl);
     }
 }

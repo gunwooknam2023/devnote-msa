@@ -46,7 +46,7 @@ public class InquiryService {
      * @return 서버에 저장된 후의 접근 URL
      */
     public String uploadImage(MultipartFile imageFile) {
-        return fileStorageService.storeFile(imageFile);
+        return fileStorageService.storeFile(imageFile, "inquiries");
     }
 
     /**

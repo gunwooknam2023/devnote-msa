@@ -18,8 +18,11 @@ public class EsContent {
     private Long id;
 
     @MultiField(
-            mainField = @Field(type = FieldType.Text, analyzer = "korean_analyzer"), // (1) 전문 검색용 (형태소 분석)
-            otherFields = { @InnerField(suffix = "keyword", type = FieldType.Keyword) } // (2) 정확한 값 정렬/집계용
+            mainField = @Field(type = FieldType.Text, analyzer = "korean_analyzer"),
+            otherFields = {
+                    @InnerField(suffix = "keyword", type = FieldType.Keyword),
+                    @InnerField(suffix = "suggest", type = FieldType.Search_As_You_Type, analyzer = "korean_analyzer")
+            }
     )
     private String title;
 

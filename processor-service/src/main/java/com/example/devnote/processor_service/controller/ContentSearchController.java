@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/contents/search")
@@ -45,6 +47,26 @@ public class ContentSearchController {
                         .message("Content search successful")
                         .statusCode(200)
                         .data(result)
+                        .build()
+        );
+    }
+
+    /**
+     * 검색어 자동 완성 API
+     * @param q 사용자가 입력 중인 키워드
+     * @param source 검색할 소스 (YOUTUBE 또는 NEWS)
+     * @return 추천 검색어 목록
+     */
+    @GetMapping("/suggest")
+    public ResponseEntity<ApiResponseDto<List<String>>> suggest(
+            @RequestParam("q") String q,
+            @RequestParam("source") String source) {
+        List<String> suggestions = contentSearchService.getSuggestions(q, source);
+        return ResponseEntity.ok(
+                ApiResponseDto.<List<String>>builder()
+                        .message("Fetched search suggestions")
+                        .statusCode(200)
+                        .data(suggestions)
                         .build()
         );
     }

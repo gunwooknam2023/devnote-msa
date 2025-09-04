@@ -1,5 +1,6 @@
 package com.example.devnote.processor_service.service;
 
+import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import com.example.devnote.processor_service.es.EsContent;
 import com.example.devnote.processor_service.es.EsSearchLog;
 import com.example.devnote.processor_service.es.EsSearchLogRepository;
@@ -19,7 +20,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -119,5 +122,45 @@ public class ContentSearchService {
                     .build();
             searchLogRepository.save(log);
         }
+    }
+
+    /**
+     * 'search_as_you_type' 필드를 사용하여 검색어 제안 목록을 반환
+     * @param keyword 사용자가 입력 중인 키워드
+     * @param source 필터링할 소스
+     * @return 추천 검색어 목록 (콘텐츠 제목 또는 채널명)
+     */
+    public List<String> getSuggestions(String keyword, String source) {
+        Query query = NativeQuery.builder()
+                .withQuery(q -> q
+                        // AND 조건으로 묶기 위해 bool 쿼리 사용
+                        .bool(b -> b
+                                // 1. 키워드 매칭 조건
+                                .must(m -> m
+                                        .multiMatch(mm -> mm
+                                                .query(keyword)
+                                                .type(TextQueryType.BoolPrefix)
+                                                .fields("title.suggest", "channelTitle.suggest")
+                                        )
+                                )
+                                // 2. 소스(YOUTUBE/NEWS) 필터링 조건
+                                .filter(f -> f
+                                        .term(t -> t
+                                                .field("source")
+                                                .value(source.toUpperCase())
+                                        )
+                                )
+                        )
+                )
+                .withPageable(PageRequest.of(0, 10))
+                .build();
+
+        SearchHits<EsContent> searchHits = elasticsearchOperations.search(query, EsContent.class);
+
+        // 검색된 문서의 원본 제목과 채널명을 중복 없이 리스트로 만들어 반환
+        return searchHits.getSearchHits().stream()
+                .map(hit -> hit.getContent().getTitle())
+                .distinct()
+                .collect(Collectors.toList());
     }
 }

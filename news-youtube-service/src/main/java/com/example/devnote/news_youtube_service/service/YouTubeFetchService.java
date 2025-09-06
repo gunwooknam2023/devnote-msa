@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import java.net.URL;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -44,91 +45,27 @@ public class YouTubeFetchService {
     /** Youtube 클라이언트 */
     private final YouTube youtubeclient;
 
-    /** 레디스 */
-    private final StringRedisTemplate redis;
-
-    /** 조회할 카테고리 목록 */
-    @Value("#{'${youtube.categories}'.split(',')}")
-    private List<String> categories;
-
     /**
      * 1시간마다 실행되는 메인 스케줄러
-     * 1) 카테고리 검색 (Redis + publishedAfter)
-     * 2) 채널 구독: 초기 전체 로딩 → RSS 증분 로딩
+     * 채널 구독: 초기 전체 로딩 → RSS 증분 로딩
      */
     @Scheduled(fixedRateString = "${youtube.fetch.rate}")
     public void fetchAndPublishYoutube() {
-        // 1) 카테고리 기반 검색
-        categories.forEach(this::fetchByCategory);
-
-        // 2) 채널 구독 로직
-        // 2-1) initialLoaded == false → 전체 로딩
-        List<ChannelSubscription> toInit = channelSubscriptionRepository.findByInitialLoadedFalse();
+        // 채널 구독 로직
+        // initialLoaded == false → 전체 로딩
+        List<ChannelSubscription> toInit = channelSubscriptionRepository.findBySourceAndInitialLoadedFalse("YOUTUBE");
         toInit.forEach(sub -> {
             fetchAllByChannel(sub);
             sub.setInitialLoaded(true);
             channelSubscriptionRepository.save(sub);
         });
-        // 2-2) initialLoaded == true → RSS 기반 증분 로딩
-        List<ChannelSubscription> toRss = channelSubscriptionRepository.findByInitialLoadedTrue();
+
+        // initialLoaded == true → RSS 기반 증분 로딩
+        List<ChannelSubscription> toRss = channelSubscriptionRepository.findBySourceAndInitialLoadedTrue("YOUTUBE");
         toRss.forEach(this::fetchRssByChannel);
     }
 
-    /** 1) 카테고리 검색: Redis 에 마지막 수집 시각 저장 */
-    private void fetchByCategory(String category) {
-        String redisKey = "yt:lastFetched:cat:" + category;
-        Long lastTs = redis.opsForValue().get(redisKey) != null
-                ? Long.parseLong(redis.opsForValue().get(redisKey))
-                : Instant.now().minusSeconds(24 * 3600).toEpochMilli(); // 초기 24시간 전
-
-        log.info("[Category] '{}' since={}", category, Instant.ofEpochMilli(lastTs));
-
-        try {
-            var req = youtubeclient.search()
-                    .list("snippet")
-                    .setKey(apiKey)
-                    .setQ("개발 " + category)
-                    .setType("video")
-                    .setOrder("date")
-                    .setMaxResults(10L)
-                    .setPublishedAfter(new DateTime(lastTs));
-
-            List<SearchResult> items = req.execute().getItems();
-            if (items.isEmpty()) {
-                log.info("  – No new videos for '{}'", category);
-                return;
-            }
-
-            // 신규 영상에 대해 발행
-            items.forEach(r -> {
-                var sn = r.getSnippet();
-                Instant published = Instant.parse(sn.getPublishedAt().toStringRfc3339());
-                publishContent(
-                        "TBC",
-                        r.getId().getVideoId(),
-                        sn.getChannelId(),
-                        sn.getChannelTitle(),
-                        sn.getTitle(),
-                        sn.getThumbnails().getHigh().getUrl(),
-                        published
-                );
-            });
-
-            // 최신 타임스탬프 갱신
-            long newest = items.stream()
-                    .map(r -> Instant.parse(r.getSnippet().getPublishedAt().toStringRfc3339())
-                            .toEpochMilli())
-                    .max(Comparator.naturalOrder())
-                    .get();
-            redis.opsForValue().set(redisKey, String.valueOf(newest));
-            log.info("  ✓ Updated lastFetched for '{}' → {}", category, Instant.ofEpochMilli(newest));
-
-        } catch (Exception ex) {
-            log.error("Failed category fetch '{}': {}", category, ex.getMessage(), ex);
-        }
-    }
-
-    /** 2-1) 채널 초기 전체 로딩: playlistItems.list + 페이징 순회 */
+    /** 채널 초기 전체 로딩: playlistItems.list + 페이징 순회 */
     private void fetchAllByChannel(ChannelSubscription sub) {
         String channelId = sub.getChannelId();
         log.info("[FullLoad] channel={}", channelId);
@@ -179,7 +116,7 @@ public class YouTubeFetchService {
         }
     }
 
-    /** 2-2) 채널 RSS 증분 로딩: 최신 약 30개만 파싱 */
+    /** 채널 RSS 증분 로딩 */
     private void fetchRssByChannel(ChannelSubscription sub) {
         String channelId = sub.getChannelId();
         String feedUrl = "https://www.youtube.com/feeds/videos.xml?channel_id=" + channelId;

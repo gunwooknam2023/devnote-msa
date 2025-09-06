@@ -116,4 +116,48 @@ public class HistoryService {
             return null;
         }
     }
+
+    /**
+     * 현재 로그인된 사용자의 시청 기록을 source에 따라 전체 삭제
+     * @param source 삭제할 콘텐츠의 소스 ("YOUTUBE" 또는 "NEWS")
+     */
+    @Transactional
+    public void deleteAllHistory(String source) {
+        User currentUser = getCurrentUser();
+
+        // 1. 현재 사용자의 모든 시청 기록을 DB에서 조회
+        List<ViewHistory> allHistories = historyRepository.findByUser(currentUser);
+        if (allHistories.isEmpty()) {
+            return; // 삭제할 기록이 없으면 종료
+        }
+
+        // 2. 삭제해야 할 시청 기록만 필터링
+        List<ViewHistory> historiesToDelete = allHistories.stream()
+                .filter(history -> {
+                    ContentDto content = fetchContentDetails(history.getContentId());
+                    return content != null && source.equalsIgnoreCase(content.getSource());
+                })
+                .toList();
+
+        // 3. 필터링된 기록들을 DB에서 한 번에 삭제
+        if (!historiesToDelete.isEmpty()) {
+            historyRepository.deleteAllInBatch(historiesToDelete);
+            log.info("사용자 ID {}의 {} 시청 기록 {}건을 삭제했습니다.", currentUser.getId(), source, historiesToDelete.size());
+        }
+    }
+
+    /**
+     * 현재 로그인된 사용자의 특정 콘텐츠 시청 기록을 개별 삭제
+     */
+    @Transactional
+    public void deleteHistoryByContentId(Long contentId) {
+        User currentUser = getCurrentUser();
+        long deletedCount = historyRepository.deleteByUserAndContentId(currentUser, contentId);
+
+        if (deletedCount == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 콘텐츠에 대한 시청 기록을 찾을 수 없습니다.");
+        }
+        log.info("사용자 ID {}의 시청 기록이 삭제되었습니다 (contentId={})", currentUser.getId(), contentId);
+    }
+
 }

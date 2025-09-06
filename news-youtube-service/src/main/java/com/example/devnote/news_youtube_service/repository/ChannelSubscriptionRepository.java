@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ChannelSubscriptionRepository extends JpaRepository<ChannelSubscription, Long> {
-    List<ChannelSubscription> findByInitialLoadedFalse();
-    List<ChannelSubscription> findByInitialLoadedTrue();
     Optional<ChannelSubscription> findByChannelId(String channelId);
     List<ChannelSubscription> findBySource(String source);
+    List<ChannelSubscription> findBySourceAndInitialLoadedFalse(String source);
+    List<ChannelSubscription> findBySourceAndInitialLoadedTrue(String source);
 }

@@ -1,47 +1,15 @@
-# ─────────────────────────────────────────────
-# 1) Builder 스테이지: Gradle Wrapper로 프로젝트 전체 빌드
-# ─────────────────────────────────────────────
 FROM eclipse-temurin:17-jdk-jammy AS builder
 WORKDIR /workspace
+COPY . .
+RUN chmod +x ./gradlew && ./gradlew :processor-service:clean :processor-service:bootJar -x test --no-daemon
 
-# Gradle 관련 파일들을 먼저 복사하여 Docker 빌드 캐시를 활용합니다.
-COPY ../gradlew .
-COPY ../gradle ./gradle
-COPY ../build.gradle .
-COPY ../settings.gradle .
-
-# 각 서비스의 소스코드를 복사합니다.
-# processor-service 서비스의 모든 것을 복사합니다.
-COPY ./processor-service ./processor-service
-
-# 다른 서비스의 build.gradle 파일도 복사합니다. (의존성 해결)
-COPY ./api-gateway/build.gradle ./api-gateway/build.gradle
-COPY ./eureka-server/build.gradle ./eureka-server/build.gradle
-COPY ./news-youtube-service/build.gradle ./news-youtube-service/build.gradle
-COPY ./stats-service/build.gradle ./stats-service/build.gradle
-COPY ./user-service/build.gradle ./user-service/build.gradle
-
-
-# Gradle Wrapper 실행 권한 부여
-RUN chmod +x ./gradlew
-
-# processor-service 모듈만 빌드하여 효율성을 높입니다.
-RUN ./gradlew :processor-service:bootJar --no-daemon
-
-# ─────────────────────────────────────────────
-# 2) Runtime 스테이지: 경량 JRE에서 JAR 실행
-# ─────────────────────────────────────────────
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
+COPY --from=builder /workspace/processor-service/build/libs/*.jar /app/app.jar
 
-# 빌드된 processor-service의 JAR 파일 경로를 정확히 지정하여 복사합니다.
-COPY --from=builder /workspace/processor-service/build/libs/*.jar app.jar
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV JAVA_OPTS=""
 
-# 로그 및 업로드 파일 저장을 위한 볼륨
-VOLUME ["/app/logs", "/app/uploads"]
-
-# processor-service의 컨테이너 내부 포트
+VOLUME ["/app/logs"]
 EXPOSE 8100
-
-# 애플리케이션 실행
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["/bin/sh","-c","java $JAVA_OPTS -jar /app/app.jar"]

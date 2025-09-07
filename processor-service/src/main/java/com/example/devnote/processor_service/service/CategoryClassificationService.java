@@ -35,26 +35,26 @@ public class CategoryClassificationService {
     /**
      * 1시간마다 카테고리가 'TBC'인 콘텐츠를 Source별로 조회하여 분류
      */
-//    @Scheduled(fixedDelayString = "3600000")
-//    public void classifyTbcContents() {
-//        // 1. 유튜브 콘텐츠 분류
-//        List<ContentEntity> youtubeToClassify = contentRepository.findBySourceAndCategory("YOUTUBE", "TBC");
-//        if (!youtubeToClassify.isEmpty()) {
-//            log.info("[AI-CLASSIFY] Found {} YOUTUBE contents to classify.", youtubeToClassify.size());
-//            processBatch(youtubeToClassify, props.getYoutube());
-//        }
-//
-//        // 2. 뉴스 콘텐츠 분류
-//        List<ContentEntity> newsToClassify = contentRepository.findBySourceAndCategory("NEWS", "TBC");
-//        if (!newsToClassify.isEmpty()) {
-//            log.info("[AI-CLASSIFY] Found {} NEWS contents to classify.", newsToClassify.size());
-//            processBatch(newsToClassify, props.getNews());
-//        }
-//
-//        if (youtubeToClassify.isEmpty() && newsToClassify.isEmpty()) {
-//            log.info("[AI-CLASSIFY] No content to classify.");
-//        }
-//    }
+    @Scheduled(fixedDelayString = "3600000")
+    public void classifyTbcContents() {
+        // 1. 유튜브 콘텐츠 분류
+        List<ContentEntity> youtubeToClassify = contentRepository.findBySourceAndCategory("YOUTUBE", "TBC");
+        if (!youtubeToClassify.isEmpty()) {
+            log.info("[AI-CLASSIFY] Found {} YOUTUBE contents to classify.", youtubeToClassify.size());
+            processBatch(youtubeToClassify, props.getYoutube());
+        }
+
+        // 2. 뉴스 콘텐츠 분류
+        List<ContentEntity> newsToClassify = contentRepository.findBySourceAndCategory("NEWS", "TBC");
+        if (!newsToClassify.isEmpty()) {
+            log.info("[AI-CLASSIFY] Found {} NEWS contents to classify.", newsToClassify.size());
+            processBatch(newsToClassify, props.getNews());
+        }
+
+        if (youtubeToClassify.isEmpty() && newsToClassify.isEmpty()) {
+            log.info("[AI-CLASSIFY] No content to classify.");
+        }
+    }
 
     /**
      * 주어진 콘텐츠 목록을 특정 분류 체계(Scheme)에 따라 배치 처리

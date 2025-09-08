@@ -2,29 +2,19 @@ package com.example.devnote.security;
 
 import com.example.devnote.config.JwtTokenProvider;
 import com.example.devnote.entity.User;
-import com.example.devnote.repository.UserRepository;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Map;
 
 /**
  * OAuth2 로그인 성공 시 JWT 발급·쿠키 저장
@@ -34,12 +24,14 @@ import java.util.Map;
 public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccessHandler {
     private final JwtTokenProvider tokenProvider;
     private final StringRedisTemplate redis;
-
     /**
      * 로그인 성공 시 JWT 발급 후 쿠키 저장하고, 프론트로 Redirect
      */
     @Value("${app.frontend-url}")
     private String frontendUrl;
+
+    @Value("${cookie.secure:false}")   // 기본값 false
+    private boolean cookieSecure;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -73,7 +65,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         long accessExpSeconds = tokenProvider.getAccessValidity() / 1000;
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", accessToken)
                 .httpOnly(true)
-                .secure(false) // 운영(HTTPS) 환경에서는 true로 변경
+                .secure(cookieSecure)
                 .path("/")
                 .maxAge(accessExpSeconds)
                 .build();
@@ -82,7 +74,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         long refreshExpSeconds = tokenProvider.getRefreshValidity() / 1000;
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
-                .secure(false) // 운영(HTTPS) 환경에서는 true로 변경
+                .secure(cookieSecure)
                 .path("/")
                 .maxAge(refreshExpSeconds)
                 .build();

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 
 /**
  * OAuth2 로그인 성공 시 JWT 발급·쿠키 저장
@@ -28,7 +29,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
      * 로그인 성공 시 JWT 발급 후 쿠키 저장하고, 프론트로 Redirect
      */
     @Value("${app.frontend-url}")
-    private String frontendUrl;
+    private List<String> frontendUrls;
 
     @Value("${cookie.secure:false}")   // 기본값 false
     private boolean cookieSecure;
@@ -55,7 +56,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         setTokenCookies(response, accessToken, refreshToken);
 
         // 5. 프론트엔드로 리다이렉트
-        response.sendRedirect(frontendUrl);
+        response.sendRedirect(frontendUrls.get(0));
     }
 
     /**

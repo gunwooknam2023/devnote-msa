@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 
 /**
  * OAuth2 로그인 실패 시 처리
@@ -22,10 +23,12 @@ public class OAuth2AuthenticationFailureHandler implements AuthenticationFailure
     private final JwtTokenProvider tokenProvider;
 
     @Value("${app.frontend-url}")
-    private String frontendUrl;
+    private List<String> frontendUrls;
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException {
+        String baseRedirect = frontendUrls.get(0);
+
         // 커스텀 예외 처리 로직
         if (exception instanceof UserWithdrawnException withdrawnException) {
             // 탈퇴한 사용자일 경우, 임시 토큰을 발급하여 리다이렉트
@@ -33,7 +36,7 @@ public class OAuth2AuthenticationFailureHandler implements AuthenticationFailure
 
             // 5분짜리 임시 "상태 확인용 토큰" 발급
             String statusToken = tokenProvider.createStatusToken(email);
-            String redirectUrl = frontendUrl + "/withdrawn?token=" + statusToken;
+            String redirectUrl = baseRedirect + "/withdrawn?token=" + statusToken;
             response.sendRedirect(redirectUrl);
             return;
         }

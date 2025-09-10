@@ -7,6 +7,7 @@ import com.example.devnote.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -29,6 +30,9 @@ public class AuthController {
     private final StringRedisTemplate redis;
     private final JwtTokenProvider tokenProvider;
 
+    @Value("${cookie.secure:false}")   // 기본값 false
+    private boolean cookieSecure;
+
     /**
      * 리프레시 토큰으로 액세스 토큰 재발급
      */
@@ -48,7 +52,7 @@ public class AuthController {
         long accessExpSec = tokenProvider.getAccessValidity() / 1000;
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", dto.getAccessToken())
                 .httpOnly(true)
-                .secure(false)
+                .secure(cookieSecure)
                 .sameSite("None")
                 .path("/")
                 .maxAge(accessExpSec)
@@ -91,7 +95,7 @@ public class AuthController {
         // 3) refreshToken 쿠키 만료
         ResponseCookie clearRefresh = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(cookieSecure)
                 .sameSite("None")
                 .path("/")
                 .maxAge(0)
@@ -101,7 +105,7 @@ public class AuthController {
         // 4) accessToken 쿠키도 만료
         ResponseCookie clearAccess = ResponseCookie.from("accessToken", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(cookieSecure)
                 .sameSite("None")
                 .path("/")
                 .maxAge(0)

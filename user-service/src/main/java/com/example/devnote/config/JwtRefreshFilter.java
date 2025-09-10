@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,6 +28,9 @@ import java.util.List;
 public class JwtRefreshFilter extends OncePerRequestFilter {
     private final JwtTokenProvider tokenProvider;
     private final AuthService authService;
+
+    @Value("${cookie.secure:false}")   // 기본값 false
+    private boolean cookieSecure;
 
     @Override
     protected void doFilterInternal(
@@ -62,7 +66,7 @@ public class JwtRefreshFilter extends OncePerRequestFilter {
                     long expSec = tokenProvider.getAccessValidity() / 1000;
                     ResponseCookie cookie = ResponseCookie.from("accessToken", newAccess)
                             .httpOnly(true)
-                            .secure(false)
+                            .secure(cookieSecure)
                             .sameSite("None")
                             .path("/")
                             .maxAge(expSec)

@@ -49,7 +49,7 @@ public class AuthController {
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", dto.getAccessToken())
                 .httpOnly(true)
                 .secure(false)
-//                .sameSite("None")
+                .sameSite("None")
                 .path("/")
                 .maxAge(accessExpSec)
                 .build();
@@ -92,7 +92,7 @@ public class AuthController {
         ResponseCookie clearRefresh = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(false)
-//                .sameSite("None")
+                .sameSite("None")
                 .path("/")
                 .maxAge(0)
                 .build();
@@ -102,7 +102,7 @@ public class AuthController {
         ResponseCookie clearAccess = ResponseCookie.from("accessToken", "")
                 .httpOnly(true)
                 .secure(false)
-//                .sameSite("None")
+                .sameSite("None")
                 .path("/")
                 .maxAge(0)
                 .build();

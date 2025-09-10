@@ -63,7 +63,7 @@ public class JwtRefreshFilter extends OncePerRequestFilter {
                     ResponseCookie cookie = ResponseCookie.from("accessToken", newAccess)
                             .httpOnly(true)
                             .secure(false)
-//                            .sameSite("None")
+                            .sameSite("None")
                             .path("/")
                             .maxAge(expSec)
                             .build();

@@ -5,6 +5,8 @@ import com.example.devnote.entity.User;
 import com.example.devnote.repository.UserRepository;
 import com.example.devnote.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -32,10 +34,16 @@ public class ProfileController {
         );
     }
 
-    /** 프로필 페이지 정보 반환 (찜 영상, 뉴스, 채널 / 작성한 댓글 목록) */
+    /**
+     * 프로필 페이지 정보 반환 (찜 영상, 뉴스, 채널 / 작성한 댓글 목록)
+     * 각 목록에 페이지네이션을 적용
+     * @param pageable 클라이언트에서 전달하는 페이지 정보 (예: ?page=0&size=10)
+     */
     @GetMapping("/dashboard")
-    public ResponseEntity<ApiResponseDto<DashboardDto>> getDashboard() {
-        DashboardDto dto = profileService.getDashboard();
+    public ResponseEntity<ApiResponseDto<DashboardDto>> getDashboard(
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        DashboardDto dto = profileService.getDashboard(pageable);
 
         return ResponseEntity.ok(
                 ApiResponseDto.<DashboardDto> builder()
@@ -77,7 +85,7 @@ public class ProfileController {
         );
     }
 
-    /** 현재 로그인한 사용자의 회원 탈퇴를 처리 */
+    /** 현재 로그인된 사용자의 회원 탈퇴를 처리 */
     @DeleteMapping("/me")
     public ResponseEntity<ApiResponseDto<Void>> withdraw() {
         profileService.withdrawCurrentUser();

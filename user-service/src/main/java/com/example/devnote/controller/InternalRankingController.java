@@ -3,6 +3,7 @@ package com.example.devnote.controller;
 import com.example.devnote.dto.RankedChannelIdDto;
 import com.example.devnote.dto.RankedContentIdDto;
 import com.example.devnote.dto.RankedUserDto;
+import com.example.devnote.repository.FavoriteChannelRepository;
 import com.example.devnote.service.RankingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,7 @@ import java.util.List;
 public class InternalRankingController {
 
     private final RankingService rankingService;
+    private final FavoriteChannelRepository favoriteChannelRepository;
 
     /**
      * 가장 많이 찜한 콘텐츠 ID 목록
@@ -50,12 +52,13 @@ public class InternalRankingController {
     }
 
     /**
-     * 가장 많이 찜한 채널 ID 목록
+     * 가장 많이 찜한 채널 ID 목록을 source를 기준으로 조회
      */
     @GetMapping("/channel-favorites")
-    public ResponseEntity<List<RankedChannelIdDto>> getTopFavoritedChannels() {
-        // 상위 10개만 조회
-        List<RankedChannelIdDto> result = rankingService.getTopFavoritedChannels(PageRequest.of(0, 10));
+    public ResponseEntity<List<RankedChannelIdDto>> getTopFavoritedChannels(
+            @RequestParam("source") String source
+    ) {
+        List<RankedChannelIdDto> result = rankingService.getTopFavoritedChannelsBySource(source);
         return ResponseEntity.ok(result);
     }
 

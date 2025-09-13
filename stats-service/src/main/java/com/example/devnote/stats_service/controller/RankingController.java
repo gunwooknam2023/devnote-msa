@@ -29,7 +29,7 @@ public class RankingController {
     private final StringRedisTemplate redisTemplate;
 
     /**
-     * 가장 많이 찜한 콘텐츠 TOP 50 (페이지당 10개)
+     * 가장 많이 찜한 콘텐츠 TOP 100 (페이지당 10개)
      */
     @GetMapping("/content-favorites")
     public ResponseEntity<ApiResponseDto<PageResponseDto<RankedContentDto>>> getTopFavoritedContents(
@@ -47,7 +47,7 @@ public class RankingController {
     }
 
     /**
-     * 가장 댓글이 많은 콘텐츠 TOP 50 (페이지당 10개)
+     * 가장 댓글이 많은 콘텐츠 TOP 100 (페이지당 10개)
      */
     @GetMapping("/content-comments")
     public ResponseEntity<ApiResponseDto<PageResponseDto<RankedContentDto>>> getTopCommentedContents(
@@ -65,14 +65,14 @@ public class RankingController {
     }
 
     /**
-     * 가장 많이 찜한 채널 TOP 10
+     * 가장 많이 찜한 채널을 유튜브/뉴스 TOP 10으로 나눠 조회
      */
     @GetMapping("/channel-favorites")
-    public ResponseEntity<ApiResponseDto<List<RankedChannelDto>>> getTopFavoritedChannels() {
-        List<RankedChannelDto> data = rankingService.getTopFavoritedChannels();
+    public ResponseEntity<ApiResponseDto<RankedChannelsDto>> getTopFavoritedChannels() {
+        RankedChannelsDto data = rankingService.getTopFavoritedChannelsBySource();
         return ResponseEntity.ok(
-                ApiResponseDto.<List<RankedChannelDto>>builder()
-                        .message("Top 10 favorited channels")
+                ApiResponseDto.<RankedChannelsDto>builder()
+                        .message("Top 10 favorited channels by source")
                         .statusCode(200)
                         .data(data)
                         .build()

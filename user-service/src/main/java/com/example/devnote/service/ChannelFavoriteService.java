@@ -1,11 +1,14 @@
 package com.example.devnote.service;
 
+import com.example.devnote.dto.ApiResponseDto;
 import com.example.devnote.dto.ChannelStatsUpdateDto;
+import com.example.devnote.dto.ChannelSubscriptionDto;
 import com.example.devnote.entity.FavoriteChannel;
 import com.example.devnote.entity.User;
 import com.example.devnote.repository.FavoriteChannelRepository;
 import com.example.devnote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -38,9 +42,11 @@ public class ChannelFavoriteService {
         return u.getId();
     }
 
-    /** 채널 존재 확인 */
-    private void assertChannelExists(Long chSubId) {
-        apiGatewayClient.get()
+    /**
+     * 채널 존재 확인과 동시에 상세 정보를 반환
+     */
+    private ChannelSubscriptionDto fetchChannelDetails(Long chSubId) {
+        ApiResponseDto<ChannelSubscriptionDto> response = apiGatewayClient.get()
                 .uri("/api/v1/channels/{id}", chSubId)
                 .retrieve()
                 .onStatus(status -> status.value() == 404,
@@ -49,15 +55,16 @@ public class ChannelFavoriteService {
                                 "Channel not found: " + chSubId
                         ))
                 )
-                .toBodilessEntity()
+                .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ChannelSubscriptionDto>>() {})
                 .block();
+        return Objects.requireNonNull(response).getData();
     }
 
     /** 채널 찜 추가 */
     @Transactional
     public void add(Long chSubId) {
         Long userId = currentUserId();
-        assertChannelExists(chSubId);
+        ChannelSubscriptionDto channelDetails = fetchChannelDetails(chSubId);
 
         if (favRepo.findByUserIdAndChannelSubscriptionId(userId, chSubId).isPresent()) {
             throw new ResponseStatusException(
@@ -69,6 +76,7 @@ public class ChannelFavoriteService {
         favRepo.save(FavoriteChannel.builder()
                 .userId(userId)
                 .channelSubscriptionId(chSubId)
+                .source(channelDetails.getSource())
                 .build());
 
         // 찜 추가(+1) 이벤트

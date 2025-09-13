@@ -16,6 +16,7 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
     List<CommentEntity> findByContentIdOrderByCreatedAtAsc(Long contentId);
     List<CommentEntity> findByParentIdOrderByCreatedAtAsc(Long parentId);
     List<CommentEntity> findByUserIdOrderByCreatedAtDesc(Long userId);
+    Page<CommentEntity> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     /** 특정 댓글의 자식 존재 여부 */
     boolean existsByParentId(Long parentId);

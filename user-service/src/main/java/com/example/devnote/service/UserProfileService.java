@@ -11,6 +11,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -116,67 +120,59 @@ public class UserProfileService {
         return me.getSelfIntroduction();
     }
 
-    /** 프로필 페이지 정보 반환 (찜 영상, 뉴스, 채널 / 작성한 댓글 목록) */
-    public DashboardDto getDashboard() {
+    /**
+     * 프로필 페이지 정보 반환 (찜 영상, 뉴스, 채널 / 작성한 댓글 목록)
+     */
+    public DashboardDto getDashboard(Pageable pageable) {
         User currentUser = currentUser();
         Long userId = currentUser.getId();
 
-        // 1) 찜한 콘텐츠 ID 목록
+        // 1. 찜한 콘텐츠 처리 (영상/뉴스)
         List<Long> contentIds = favContentRepo.findByUserId(userId)
                 .stream()
                 .map(FavoriteContent::getContentId)
                 .toList();
 
-        // 2) API-GateWay 호출 -> ContentDto 로 변환
         List<ContentDto> allFavorites = contentIds.stream()
-                .map(id -> apiGatewayClient
-                        .get()
-                        .uri("/api/v1/contents/{id}", id)
-                        .retrieve()
-                        .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ContentDto>>() {
-                        })
-                        .block()
-                        .getData()
-                ).toList();
-
-        // 3) source 별로 분리
-        List<ContentDto> favoriteVideos = allFavorites.stream()
-                .filter(c -> "YOUTUBE".equals(c.getSource()))
+                .map(this::fetchContentDetails)
+                .filter(Objects::nonNull)
                 .toList();
 
-        List<ContentDto> favoriteNews = allFavorites.stream()
+        List<ContentDto> favoriteVideosList = allFavorites.stream()
+                .filter(c -> "YOUTUBE".equals(c.getSource()))
+                .toList();
+        List<ContentDto> favoriteNewsList = allFavorites.stream()
                 .filter(c -> "NEWS".equals(c.getSource()))
                 .toList();
 
-        // 4) 찜한 채널 ID -> ChannelSubscription 조회
-        List<ChannelSubscriptionDto> favoriteChannels = favChannelRepo.findByUserId(userId)
-                .stream()
-                .map(fav -> apiGatewayClient
-                        .get()
-                        .uri("/api/v1/channels/{id}", fav.getChannelSubscriptionId())
-                        .retrieve()
-                        .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ChannelSubscriptionDto>>() {
-                        })
-                        .block()
-                        .getData()
-                ).toList();
+        Page<ContentDto> favoriteVideosPage = toPage(favoriteVideosList, pageable);
+        Page<ContentDto> favoriteNewsPage = toPage(favoriteNewsList, pageable);
 
-        // 5) 작성한 댓글
-        List<CommentResponseDto> comments = commentRepo.findByUserIdOrderByCreatedAtDesc(userId)
+        // 2. 찜한 채널 처리
+        List<ChannelSubscriptionDto> favoriteChannelsList = favChannelRepo.findByUserId(userId)
                 .stream()
-                .map(this::toCommentDto)
+                .map(fav -> fetchChannelDetails(fav.getChannelSubscriptionId()))
+                .filter(Objects::nonNull)
                 .toList();
+        Page<ChannelSubscriptionDto> favoriteChannelsPage = toPage(favoriteChannelsList, pageable);
 
+        // 3. 작성한 댓글 처리 (DB에서 직접 페이지네이션)
+        Page<CommentEntity> commentPage = commentRepo.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+        Page<CommentResponseDto> commentsPage = commentPage.map(this::toCommentDto);
+
+        // 4. 최종 DashboardDto 조립
         return DashboardDto.builder()
-                .favoriteVideos(favoriteVideos)
-                .favoriteNews(favoriteNews)
-                .favoriteChannels(favoriteChannels)
-                .comments(comments)
+                .favoriteVideos(favoriteVideosPage)
+                .favoriteNews(favoriteNewsPage)
+                .favoriteChannels(favoriteChannelsPage)
+                .comments(commentsPage)
                 .activityScore(currentUser.getActivityScore())
                 .build();
     }
 
-    /** 현재 로그인된 사용자의 회원 탈퇴를 처리. 모든 활동 기록을 삭제하고, 재가입 방지를 위한 정보를 남긴 뒤, 회원 정보를 최종 삭제합니다. */
+    /**
+     * 현재 로그인된 사용자의 회원 탈퇴를 처리. 모든 활동 기록을 삭제하고, 재가입 방지를 위한 정보를 남긴 뒤, 회원 정보를 최종 삭제
+     */
     @Transactional
     public void withdrawCurrentUser() {
         // 1. 현재 로그인한 사용자 정보 조회
@@ -216,6 +212,55 @@ public class UserProfileService {
         userRepo.delete(user);
         log.info("회원 정보 최종 삭제 완료: userId={}", userId);
     }
+
+    /**
+     * List를 Page 객체로 변환하는 유틸리티 메서드
+     */
+    private <T> Page<T> toPage(List<T> list, Pageable pageable) {
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), list.size());
+
+        if (start > list.size()) {
+            return new PageImpl<>(List.of(), pageable, list.size());
+        }
+
+        return new PageImpl<>(list.subList(start, end), pageable, list.size());
+    }
+
+    /**
+     * 찜한 콘텐츠의 상세 정보를 조회하는 메서드
+     */
+    private ContentDto fetchContentDetails(Long contentId) {
+        try {
+            ApiResponseDto<ContentDto> response = apiGatewayClient.get()
+                    .uri("/api/v1/contents/{id}", contentId)
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ContentDto>>() {})
+                    .block();
+            return (response != null) ? response.getData() : null;
+        } catch (WebClientResponseException.NotFound ex) {
+            log.warn("Favorite content not found (id={}), skipping.", contentId);
+            return null;
+        }
+    }
+
+    /**
+     * 찜한 채널의 상세 정보를 조회하는 메서드
+     */
+    private ChannelSubscriptionDto fetchChannelDetails(Long channelId) {
+        try {
+            ApiResponseDto<ChannelSubscriptionDto> response = apiGatewayClient.get()
+                    .uri("/api/v1/channels/{id}", channelId)
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ChannelSubscriptionDto>>() {})
+                    .block();
+            return (response != null) ? response.getData() : null;
+        } catch (WebClientResponseException.NotFound ex) {
+            log.warn("Favorite channel not found (id={}), skipping.", channelId);
+            return null;
+        }
+    }
+
 
     /** CommentEntity -> CommentResponseDto 변환 */
     private CommentResponseDto toCommentDto(CommentEntity e) {

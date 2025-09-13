@@ -4,8 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
+import org.springframework.data.domain.Page;
 
 /**
  * 대시보드
@@ -20,16 +19,16 @@ import java.util.List;
 @Builder
 public class DashboardDto {
     /** 찜한 YouTube 영상들 */
-    private List<ContentDto> favoriteVideos;
+    private Page<ContentDto> favoriteVideos;
 
     /** 찜한 News 콘텐츠들 */
-    private List<ContentDto> favoriteNews;
+    private Page<ContentDto> favoriteNews;
 
     /** 찜한 채널들 */
-    private List<ChannelSubscriptionDto> favoriteChannels;
+    private Page<ChannelSubscriptionDto> favoriteChannels;
 
     /** 작성한 댓글들 */
-    private List<CommentResponseDto> comments;
+    private Page<CommentResponseDto> comments;
 
     /** 활동 점수 */
     private Integer activityScore;

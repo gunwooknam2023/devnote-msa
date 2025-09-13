@@ -23,6 +23,9 @@ public class FavoriteChannel {
     @Column(name = "channel_subscription_id", nullable = false)
     private Long channelSubscriptionId;
 
+    @Column(name = "source", length = 20)
+    private String source;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

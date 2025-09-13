@@ -90,20 +90,42 @@ public class RankingService {
     }
 
     /**
-     * 가장 많이 찜한 채널 TOP 10 조회
+     * 가장 많이 찜한 채널 TOP 10을 유튜브/뉴스로 나눠 조회
      */
-    public List<RankedChannelDto> getTopFavoritedChannels() {
-        List<RankedChannelIdDto> rankedIds = webClientBuilder.baseUrl("http://user-service").build()
+    public RankedChannelsDto getTopFavoritedChannelsBySource() {
+        // 1. 유튜브 TOP 10 조회
+        List<RankedChannelIdDto> youtubeIds = fetchRankedChannelIds("YOUTUBE");
+        List<RankedChannelDto> youtubeRanks = toRankedChannelDtoList(youtubeIds);
+
+        // 2. 뉴스 TOP 10 조회
+        List<RankedChannelIdDto> newsIds = fetchRankedChannelIds("NEWS");
+        List<RankedChannelDto> newsRanks = toRankedChannelDtoList(newsIds);
+
+        return RankedChannelsDto.builder()
+                .youtube(youtubeRanks)
+                .news(newsRanks)
+                .build();
+    }
+
+    /**
+     * user-service로부터 source별 랭킹 ID 목록을 가져오는 메서드
+     */
+    private List<RankedChannelIdDto> fetchRankedChannelIds(String source) {
+        return webClientBuilder.baseUrl("http://user-service").build()
                 .get()
-                .uri("/internal/ranking/channel-favorites")
+                .uri("/internal/ranking/channel-favorites?source={source}", source)
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<List<RankedChannelIdDto>>() {})
                 .block();
+    }
 
+    /**
+     * ID 목록을 전체 DTO 목록으로 변환하는 메서드
+     */
+    private List<RankedChannelDto> toRankedChannelDtoList(List<RankedChannelIdDto> rankedIds) {
         if (rankedIds == null || rankedIds.isEmpty()) {
             return List.of();
         }
-
         AtomicLong rankCounter = new AtomicLong(1);
         return rankedIds.stream()
                 .map(rankedId -> {

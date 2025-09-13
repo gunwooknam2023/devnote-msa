@@ -10,6 +10,8 @@ import com.example.devnote.repository.FavoriteContentRepository;
 import com.example.devnote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,24 +33,30 @@ public class RankingService {
     private final UserRepository userRepository;
 
     /**
-     * 가장 많이 찜한 콘텐츠 랭킹 조회
+     * 가장 많이 찜한 콘텐츠 랭킹 조회 (상위 100개 내에서 페이지네이션)
      */
     public Page<RankedContentIdDto> getTopFavoritedContents(Pageable pageable) {
-        return favoriteContentRepository.findTopFavoritedContentIds(pageable);
+        Pageable top100Request = PageRequest.of(0, 100);
+        List<RankedContentIdDto> top100Favorites = favoriteContentRepository.findTopFavoritedContentIds(top100Request).getContent();
+
+        return toPage(top100Favorites, pageable);
     }
 
     /**
-     * 가장 댓글이 많은 콘텐츠 랭킹 조회
+     * 가장 댓글이 많은 콘텐츠 랭킹 조회 (상위 100개 내에서 페이지네이션)
      */
     public Page<RankedContentIdDto> getTopCommentedContents(Pageable pageable) {
-        return commentRepository.findTopCommentedContentIds(pageable);
+        Pageable top100Request = PageRequest.of(0, 100);
+        List<RankedContentIdDto> top100Comments = commentRepository.findTopCommentedContentIds(top100Request).getContent();
+
+        return toPage(top100Comments, pageable);
     }
 
     /**
-     * 가장 많이 찜한 채널 랭킹 조회
+     * 가장 많이 찜한 채널 랭킹을 source별로 분리하여 조회
      */
-    public List<RankedChannelIdDto> getTopFavoritedChannels(Pageable pageable) {
-        return favoriteChannelRepository.findTopFavoritedChannelIds(pageable);
+    public List<RankedChannelIdDto> getTopFavoritedChannelsBySource(String source) {
+        return favoriteChannelRepository.findTop10FavoritedChannelIdsBySource(source, PageRequest.of(0, 10));
     }
 
     /**
@@ -70,5 +78,19 @@ public class RankingService {
                 .picture(user.getPicture())
                 .activityScore(user.getActivityScore())
                 .build();
+    }
+
+    /**
+     * List를 Page 객체로 변환하는 메서드
+     */
+    private <T> Page<T> toPage(List<T> list, Pageable pageable) {
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), list.size());
+
+        if (start > list.size()) {
+            return new PageImpl<>(List.of(), pageable, list.size());
+        }
+
+        return new PageImpl<>(list.subList(start, end), pageable, list.size());
     }
 }

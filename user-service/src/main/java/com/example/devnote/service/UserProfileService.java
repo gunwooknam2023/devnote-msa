@@ -128,7 +128,7 @@ public class UserProfileService {
         Long userId = currentUser.getId();
 
         // 1. 찜한 콘텐츠 처리 (영상/뉴스)
-        List<Long> contentIds = favContentRepo.findByUserId(userId)
+        List<Long> contentIds = favContentRepo.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(FavoriteContent::getContentId)
                 .toList();
@@ -149,7 +149,7 @@ public class UserProfileService {
         Page<ContentDto> favoriteNewsPage = toPage(favoriteNewsList, pageable);
 
         // 2. 찜한 채널 처리
-        List<ChannelSubscriptionDto> favoriteChannelsList = favChannelRepo.findByUserId(userId)
+        List<ChannelSubscriptionDto> favoriteChannelsList = favChannelRepo.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(fav -> fetchChannelDetails(fav.getChannelSubscriptionId()))
                 .filter(Objects::nonNull)

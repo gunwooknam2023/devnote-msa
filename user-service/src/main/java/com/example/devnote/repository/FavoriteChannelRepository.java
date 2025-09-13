@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface FavoriteChannelRepository extends JpaRepository<FavoriteChannel, Long> {
     Optional<FavoriteChannel> findByUserIdAndChannelSubscriptionId(Long userId, Long chSubId);
     List<FavoriteChannel> findByUserId(Long userId);
+    List<FavoriteChannel> findByUserIdOrderByCreatedAtDesc(Long userId);
     void deleteByChannelSubscriptionId(Long channelSubscriptionId);
     /**
      * 가장 많이 찜한 채널 ID와 찜 수를 페이지네이션하여 조회

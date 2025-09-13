@@ -33,4 +33,7 @@ public class ChannelSubscriptionDto {
 
     /** 찜 수 */
     private Long favoriteCount;
+
+    /** 소스 구분 ("YOUTUBE" 또는 "NEWS")*/
+    private String source;
 }

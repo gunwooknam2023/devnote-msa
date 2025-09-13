@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface FavoriteContentRepository extends JpaRepository<FavoriteContent, Long> {
     Optional<FavoriteContent> findByUserIdAndContentId(Long userId, Long contentId);
     List<FavoriteContent> findByUserId(Long userId);
+    List<FavoriteContent> findByUserIdOrderByCreatedAtDesc(Long userId);
     void deleteByContentId(Long contentId);
     /**
      * 가장 많이 찜한 콘텐츠 ID와 찜 수를 페이지네이션하여 조회

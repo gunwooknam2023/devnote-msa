@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
     List<CommentEntity> findByContentIdAndParentIdIsNullOrderByCreatedAtAsc(Long contentId);
@@ -37,4 +38,18 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
             "GROUP BY c.contentId " +
             "ORDER BY COUNT(c.id) DESC, c.contentId ASC")
     Page<RankedContentIdDto> findTopCommentedContentIds(Pageable pageable);
+
+    /**
+     * 여러 contendId에 해당하는 댓글수를 Map 형태로 한번에 조회
+     */
+    @Query("SELECT c.contentId as contentId, COUNT(c.id) as commentCount " +
+            "FROM CommentEntity c " +
+            "WHERE c.contentId IN :contentIds " +
+            "GROUP BY c.contentId")
+    List<Map<String, Object>> countCommentsByContentIds(@Param("contentIds") List<Long> contentIds);
+
+    /**
+     * 특정 게시글에 달린 모든 댓글들 삭제
+     */
+    void deleteAllByContentId(Long contentId);
 }

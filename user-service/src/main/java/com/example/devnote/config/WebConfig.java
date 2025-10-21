@@ -27,5 +27,9 @@ public class WebConfig implements WebMvcConfigurer {
         // file:./uploads/profile/ 경로에서 파일을 찾아 반환
         registry.addResourceHandler("/images/profile/**")
                 .addResourceLocations("file:" + profileUploadDir + "/");
+
+        // 게시글 이미지 접근 핸들러 추가
+        registry.addResourceHandler("/images/posts/**")
+                .addResourceLocations("file:./uploads/posts/");
     }
 }

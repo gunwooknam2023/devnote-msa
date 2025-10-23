@@ -27,6 +27,8 @@ public class PostDetailResponseDto {
 
     // 통계 정보
     private long viewCount;
+    private long likeCount;
+    private long dislikeCount;
 
     // Q&A 전용
     private boolean isAdopted;

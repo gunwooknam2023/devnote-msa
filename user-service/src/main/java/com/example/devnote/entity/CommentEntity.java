@@ -1,5 +1,6 @@
 package com.example.devnote.entity;
 
+import com.example.devnote.entity.enums.CommentTargetType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -25,9 +26,14 @@ public class CommentEntity {
     /** 대댓글일 땐 parentId, 아니면 null */
     private Long parentId;
 
-    /** processor-service 의 content.id */
+    /** 댓글 대상 타입 (CONTENT or POST) */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private CommentTargetType targetType;
+
+    /** 댓글 대상 ID */
     @Column(nullable = false)
-    private Long contentId;
+    private Long targetId;
 
     /** 회원 댓글일 때 채워지는 회원 ID (anonymous 면 null) */
     private Long userId;

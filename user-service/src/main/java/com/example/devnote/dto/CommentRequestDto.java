@@ -1,5 +1,6 @@
 package com.example.devnote.dto;
 
+import com.example.devnote.entity.enums.CommentTargetType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -7,8 +8,12 @@ import lombok.Data;
 
 @Data
 public class CommentRequestDto {
-    @NotNull(message = "contentId is required")
-    private Long contentId;
+
+    @NotNull(message = "targetType is required")
+    private CommentTargetType targetType;
+
+    @NotNull(message = "targetId is required")
+    private Long targetId;
 
     private Long parentId;
 

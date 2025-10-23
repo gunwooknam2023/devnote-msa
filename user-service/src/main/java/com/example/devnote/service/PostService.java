@@ -7,6 +7,7 @@ import com.example.devnote.entity.CommentEntity;
 import com.example.devnote.entity.Post;
 import com.example.devnote.entity.User;
 import com.example.devnote.entity.enums.BoardType;
+import com.example.devnote.entity.enums.CommentTargetType;
 import com.example.devnote.repository.CommentRepository;
 import com.example.devnote.repository.PostRepository;
 import com.example.devnote.repository.UserRepository;
@@ -81,11 +82,11 @@ public class PostService {
                 ? postRepository.findByBoardTypeOrderByCreatedAtDesc(boardType, pageable)
                 : postRepository.findAllByOrderByCreatedAtDesc(pageable);
 
-        // 댓글수 가져오기
+        // 게시글 댓글수 가져오기 (POST 타입으로 조회)
         List<Long> postIds = postPage.getContent().stream().map(Post::getId).collect(Collectors.toList());
-        Map<Long, Long> commentCountMap = commentRepository.countCommentsByContentIds(postIds).stream()
+        Map<Long, Long> commentCountMap = commentRepository.countCommentsByPostIds(postIds).stream()
                 .collect(Collectors.toMap(
-                        map -> ((Number) map.get("contentId")).longValue(),
+                        map -> ((Number) map.get("postId")).longValue(),
                         map -> ((Number) map.get("commentCount")).longValue()
                 ));
 
@@ -152,8 +153,8 @@ public class PostService {
         // 1. 본문 내용에서 이미지 URL 파싱 후 실제 파일 삭제
         deleteImagesFromContent(post.getContent());
 
-        // 2. 게시글에 달린 댓글 삭제
-        commentRepository.deleteAllByContentId(postId);
+        // 2. 게시글에 달린 댓글 삭제 (POST 타입으로 지정)
+        commentRepository.deleteAllByTargetTypeAndTargetId(CommentTargetType.POST, postId);
 
         // 3. 게시글 삭제
         postRepository.delete(post);
@@ -180,7 +181,8 @@ public class PostService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "질문 작성자만 답변을 채택할 수 있습니다.");
         }
         // 3. 채택하려는 댓글이 해당 게시글의 댓글인지 확인
-        if(!Objects.equals(comment.getContentId(), postId)) {
+        if(comment.getTargetType() != CommentTargetType.POST
+                || !Objects.equals(comment.getTargetId(), postId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "해당 게시글에 존재하지 않는 댓글입니다.");
         }
         // 4. 자기 자신의 댓글은 채택 불가

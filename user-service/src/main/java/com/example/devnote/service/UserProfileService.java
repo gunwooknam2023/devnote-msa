@@ -6,6 +6,7 @@ import com.example.devnote.entity.CommentEntity;
 import com.example.devnote.entity.FavoriteContent;
 import com.example.devnote.entity.User;
 import com.example.devnote.entity.WithdrawnUser;
+import com.example.devnote.entity.enums.CommentTargetType;
 import com.example.devnote.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ public class UserProfileService {
     private final FavoriteContentRepository favContentRepo;
     private final FavoriteChannelRepository favChannelRepo;
     private final CommentRepository commentRepo;
+    private final PostRepository postRepository;
     private final WebClient apiGatewayClient;
     private final WithdrawnUserRepository withdrawnUserRepo;
     private final CommentService commentService;
@@ -269,27 +271,34 @@ public class UserProfileService {
                 .map(this::toCommentDto)
                 .toList();
 
-        // 2) 콘텐츠 정보 조회 (제목 + 소스)
-        String contentTitle = "[삭제된 콘텐츠]";
-        String contentSource = "-";
-        String contentLink = "#";
+        // 람다 내에서 변경 가능한 final 배열 사용
+        final String[] targetInfo = {"[삭제됨]", "-", "#"}; // {title, source, link}
 
-        try {
-            // 콘텐츠 정보 조회 (제목 + 소스)
-            ApiResponseDto<ContentDto> cr = apiGatewayClient.get()
-                    .uri("/api/v1/contents/{id}", e.getContentId())
-                    .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ContentDto>>() {})
-                    .block();
+        if (e.getTargetType() == CommentTargetType.CONTENT) {
+            try {
+                ApiResponseDto<ContentDto> cr = apiGatewayClient.get()
+                        .uri("/api/v1/contents/{id}", e.getTargetId())
+                        .retrieve()
+                        .bodyToMono(new ParameterizedTypeReference<ApiResponseDto<ContentDto>>() {})
+                        .block();
 
-            if (cr != null && cr.getData() != null) {
-                contentTitle = cr.getData().getTitle();
-                contentSource = cr.getData().getSource();
-                contentLink = cr.getData().getLink();
+                if (cr != null && cr.getData() != null) {
+                    targetInfo[0] = cr.getData().getTitle();
+                    targetInfo[1] = cr.getData().getSource();
+                    targetInfo[2] = cr.getData().getLink();
+                }
+            } catch (WebClientResponseException.NotFound ex) {
+                log.warn("Content not found for commentId {}: targetId={}.", e.getId(), e.getTargetId());
             }
-        } catch (WebClientResponseException.NotFound ex) {
-            // 콘텐츠를 찾지 못하면(404) 로그만 남기고 기본값으로 넘어감
-            log.warn("Content not found for commentId {}: contentId={}. Skipping details.", e.getId(), e.getContentId());
+        } else if (e.getTargetType() == CommentTargetType.POST) {
+            postRepository.findById(e.getTargetId()).ifPresentOrElse(
+                    post -> {
+                        targetInfo[0] = post.getTitle();
+                        targetInfo[1] = post.getBoardType().name();
+                        targetInfo[2] = "/posts/" + post.getId();
+                    },
+                    () -> log.warn("Post not found for commentId {}: targetId={}.", e.getId(), e.getTargetId())
+            );
         }
 
         // userId가 null(익명)일 수 있으므로 null-safe
@@ -301,7 +310,8 @@ public class UserProfileService {
         return CommentResponseDto.builder()
                 .id(e.getId())
                 .parentId(e.getParentId())
-                .contentId(e.getContentId())
+                .targetType(e.getTargetType())
+                .targetId(e.getTargetId())
                 .userId(e.getUserId())
                 .username(e.getUsername())
                 .userPicture(upic)
@@ -309,9 +319,9 @@ public class UserProfileService {
                 .createdAt(e.getCreatedAt())
                 .updatedAt(e.getUpdatedAt())
                 .replies(replies)
-                .contentTitle(contentTitle)
-                .contentSource(contentSource)
-                .contentLink(contentLink)
+                .targetTitle(targetInfo[0])
+                .targetSource(targetInfo[1])
+                .targetLink(targetInfo[2])
                 .build();
     }
 

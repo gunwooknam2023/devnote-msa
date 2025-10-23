@@ -4,6 +4,7 @@ import com.example.devnote.dto.ApiResponseDto;
 import com.example.devnote.dto.CommentRequestDto;
 import com.example.devnote.dto.CommentResponseDto;
 import com.example.devnote.dto.CommentUpdateDto;
+import com.example.devnote.entity.enums.CommentTargetType;
 import com.example.devnote.service.CommentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,12 +36,13 @@ public class CommentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
-    /** 특정 콘텐츠 댓글 전체 조회 */
+    /** 특정 대상(콘텐츠 or 게시글) 댓글 전체 조회 */
     @GetMapping
     public ResponseEntity<ApiResponseDto<List<CommentResponseDto>>> list(
-            @RequestParam Long contentId
+            @RequestParam CommentTargetType targetType,
+            @RequestParam Long targetId
     ) {
-        List<CommentResponseDto> list = commentService.listCommentsByContent(contentId);
+        List<CommentResponseDto> list = commentService.listCommentsByTarget(targetType, targetId);
         ApiResponseDto<List<CommentResponseDto>> body = ApiResponseDto
                 .<List<CommentResponseDto>>builder()
                 .message("Fetched comments")

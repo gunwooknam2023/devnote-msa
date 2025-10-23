@@ -30,4 +30,5 @@ public class CommentResponseDto {
     private List<CommentResponseDto> replies;
     private int likeCount;
     private int dislikeCount;
+    private String userVoteType;
 }

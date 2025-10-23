@@ -7,6 +7,7 @@ import com.example.devnote.dto.ContentStatsUpdateDto;
 import com.example.devnote.entity.CommentEntity;
 import com.example.devnote.entity.User;
 import com.example.devnote.entity.enums.CommentTargetType;
+import com.example.devnote.repository.CommentLikeRepository;
 import com.example.devnote.repository.CommentRepository;
 import com.example.devnote.repository.PostRepository;
 import com.example.devnote.repository.UserRepository;
@@ -33,6 +34,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final PostRepository postRepository;
+    private final CommentLikeRepository commentLikeRepository;
     private final PasswordEncoder passwordEncoder;
     private final WebClient apiGatewayClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -263,37 +265,33 @@ public class CommentService {
                 .collect(Collectors.toMap(
                         User::getId, u -> u));
 
-        // 3) id → DTO 초기화
-        // DTO 변환 시 targetType에 따라 다른 정보 조회
+        // 3) id → DTO 초기화 (toDto 메서드 사용)
         Map<Long, CommentResponseDto> dtoMap = new LinkedHashMap<>();
         for (CommentEntity e : all) {
             String displayName = e.getUserId() != null
                     ? Optional.ofNullable(userMap.get(e.getUserId()))
-                    .map(User::getName).orElse(e.getUsername())
+                    .map(User::getName)
+                    .orElse(e.getUsername())
                     : e.getUsername();
+
             String displayPicture = e.getUserId() != null
                     ? Optional.ofNullable(userMap.get(e.getUserId()))
-                    .map(User::getPicture).orElse(null)
-                    : null;
+                    .map(User::getPicture)
+                    .orElse("/images/default-avatar.png")
+                    : "/images/default-avatar.png";
 
             // 내용이 소프트 삭제된 경우 null
             String displayContent = e.isDeleted() ? null : e.getContent();
 
-            dtoMap.put(e.getId(), CommentResponseDto.builder()
-                    .id(e.getId())
-                    .parentId(e.getParentId())
-                    .targetType(e.getTargetType())
-                    .targetId(e.getTargetId())
-                    .userId(e.getUserId())
-                    .username(displayName)
-                    .userPicture(displayPicture)
-                    .content(displayContent)
-                    .createdAt(e.getCreatedAt())
-                    .updatedAt(e.getUpdatedAt())
-                    .replies(new ArrayList<>())
-                    .likeCount(e.getLikeCount())
-                    .dislikeCount(e.getDislikeCount())
-                    .build());
+            // toDto 메서드 사용하여 userVoteType 포함
+            CommentResponseDto dto = toDto(e, new ArrayList<>());
+
+            // 사용자 정보 업데이트 (최신 정보로)
+            dto.setUsername(displayName);
+            dto.setUserPicture(displayPicture);
+            dto.setContent(displayContent);
+
+            dtoMap.put(e.getId(), dto);
         }
 
         // 4) 부모-자식 연결
@@ -327,6 +325,40 @@ public class CommentService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 사용자의 댓글 투표 상태 조회
+     */
+    public String getUserVoteType(Long commentId, User user) {
+        CommentEntity comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Comment not found: " + commentId));
+
+        return commentLikeRepository.findByUserAndComment(user, comment)
+                .map(like -> like.getVoteType().name())
+                .orElse("NONE");
+    }
+
+    /**
+     * 현재 인증된 사용자 정보 추출 메서드
+     */
+    private User getCurrentUser(){
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."));
+    }
+
+    /**
+     * 현재 사용자의 댓글 투표 상태 조회 (인증된 사용자용)
+     */
+    public String getCurrentUserVoteType(Long commentId) {
+        try {
+            User user = getCurrentUser();
+            return getUserVoteType(commentId, user);
+        } catch (Exception e) {
+            return "NONE";  // 인증되지 않은 사용자는 NONE
+        }
+    }
+
     /** Entity → DTO */
     private CommentResponseDto toDto(CommentEntity e, List<CommentResponseDto> replies) {
         CommentResponseDto dto = CommentResponseDto.builder()
@@ -342,6 +374,7 @@ public class CommentService {
                 .replies(replies)
                 .likeCount(e.getLikeCount())
                 .dislikeCount(e.getDislikeCount())
+                .userVoteType(getCurrentUserVoteType(e.getId()))
                 .build();
         return dto;
     }

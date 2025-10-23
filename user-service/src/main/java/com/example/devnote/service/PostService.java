@@ -9,6 +9,7 @@ import com.example.devnote.entity.User;
 import com.example.devnote.entity.enums.BoardType;
 import com.example.devnote.entity.enums.CommentTargetType;
 import com.example.devnote.repository.CommentRepository;
+import com.example.devnote.repository.PostLikeRepository;
 import com.example.devnote.repository.PostRepository;
 import com.example.devnote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
+    private final PostLikeRepository postLikeRepository;
     private final FileStorageService fileStorageService;
 
     /**
@@ -216,6 +218,32 @@ public class PostService {
     }
 
     /**
+     * 사용자의 게시글 투표 상태 조회
+     */
+    public String getUserVoteType(Long postId, User user) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Post not found: " + postId));
+
+        return postLikeRepository.findByUserAndPost(user, post)
+                .map(like -> like.getVoteType().name())
+                .orElse("NONE");
+    }
+
+    /**
+     * 현재 사용자의 게시글 투표 상태 조회 (인증된 사용자용)
+     */
+    public String getCurrentUserVoteType(Long postId) {
+        try {
+            User user = getCurrentUser();
+            return getUserVoteType(postId, user);
+        } catch (Exception e) {
+            return "NONE";  // 인증되지 않은 사용자는 NONE
+        }
+    }
+
+
+    /**
      * Post 엔티티를 PostDetailResponseDto로 변환
      */
     private PostDetailResponseDto toDetailDto(Post post) {
@@ -226,6 +254,7 @@ public class PostService {
                 .content(post.getContent())
                 .likeCount(post.getLikeCount())
                 .dislikeCount(post.getDislikeCount())
+                .userVoteType(getCurrentUserVoteType(post.getId()))
                 .authorId(post.getUser().getId())
                 .authorName(post.getUser().getName())
                 .authorPicture(post.getUser().getPicture())

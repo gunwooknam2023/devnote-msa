@@ -2,6 +2,7 @@ package com.example.devnote.dto;
 
 import com.example.devnote.entity.enums.BoardType;
 import com.example.devnote.entity.enums.StudyCategory;
+import com.example.devnote.entity.enums.StudyMethod;
 import lombok.Builder;
 import lombok.Data;
 
@@ -31,6 +32,7 @@ public class PostListResponseDto {
 
     // 스터디 전용
     private StudyCategory studyCategory;
+    private StudyMethod studyMethod;
     private boolean isRecruiting;
 
     private Instant createdAt;

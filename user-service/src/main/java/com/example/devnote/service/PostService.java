@@ -252,6 +252,7 @@ public class PostService {
                 .commentCount(commentCount)
                 .isAdopted(post.isAdopted())
                 .studyCategory(post.getStudyCategory())
+                .studyMethod(post.getStudyMethod())
                 .isRecruiting(post.isRecruiting())
                 .createdAt(post.getCreatedAt())
                 .build();

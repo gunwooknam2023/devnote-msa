@@ -1,5 +1,6 @@
 package com.example.devnote.dto;
 
+import com.example.devnote.entity.enums.CommentTargetType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,14 +16,15 @@ import java.util.List;
 public class CommentResponseDto {
     private Long id;
     private Long parentId;
-    private Long contentId;
+    private CommentTargetType targetType;
+    private Long targetId;
     private Long userId;
     private String username;
     private String userPicture;
     private String content;
-    private String contentTitle;
-    private String contentSource;
-    private String contentLink;
+    private String targetTitle;
+    private String targetSource;
+    private String targetLink;
     private Instant createdAt;
     private Instant updatedAt;
     private List<CommentResponseDto> replies;

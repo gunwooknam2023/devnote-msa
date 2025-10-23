@@ -6,7 +6,9 @@ import com.example.devnote.dto.CommentUpdateDto;
 import com.example.devnote.dto.ContentStatsUpdateDto;
 import com.example.devnote.entity.CommentEntity;
 import com.example.devnote.entity.User;
+import com.example.devnote.entity.enums.CommentTargetType;
 import com.example.devnote.repository.CommentRepository;
+import com.example.devnote.repository.PostRepository;
 import com.example.devnote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 public class CommentService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final PostRepository postRepository;
     private final PasswordEncoder passwordEncoder;
     private final WebClient apiGatewayClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -37,7 +40,12 @@ public class CommentService {
     /** 댓글 생성 (회원/비회원 공용) */
     @Transactional
     public CommentResponseDto createComment(CommentRequestDto req) {
-        assertContentExists(req.getContentId());
+        // targetType에 따라 다른 검증
+        if (req.getTargetType() == CommentTargetType.CONTENT) {
+            assertContentExists(req.getTargetId());
+        } else if (req.getTargetType() == CommentTargetType.POST) {
+            assertPostExists(req.getTargetId());
+        }
 
         // 대댓글 작성시 댓글 id 검증
         if (req.getParentId() != null) {
@@ -45,10 +53,11 @@ public class CommentService {
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.BAD_REQUEST,
                             "Parent comment not found: " + req.getParentId()));
-            if (!parent.getContentId().equals(req.getContentId())) {
+            if (!parent.getTargetType().equals(req.getTargetType())
+                    || !parent.getTargetId().equals(req.getTargetId())) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        "Parent comment does not belong to contentId=" + req.getContentId());
+                        "Parent comment does not belong to the same target");
             }
         }
 
@@ -77,7 +86,8 @@ public class CommentService {
         }
 
         CommentEntity ent = CommentEntity.builder()
-                .contentId(req.getContentId())
+                .targetType(req.getTargetType())
+                .targetId(req.getTargetId())
                 .parentId(req.getParentId())
                 .userId(userId)
                 .username(username)
@@ -87,15 +97,16 @@ public class CommentService {
 
         ent = commentRepository.save(ent);
 
-        // 댓글 추가(+1) 이벤트
-        ContentStatsUpdateDto message = ContentStatsUpdateDto.builder()
-                .contentId(req.getContentId())
-                .commentDelta(1)
-                .build();
-        kafkaTemplate.send("content-stats-update", message);
+        // CONTENT 타입일 때만 Kafka 이벤트 발행
+        if (req.getTargetType() == CommentTargetType.CONTENT) {
+            ContentStatsUpdateDto message = ContentStatsUpdateDto.builder()
+                    .contentId(req.getTargetId())
+                    .commentDelta(1)
+                    .build();
+            kafkaTemplate.send("content-stats-update", message);
 
-        // 신규 댓글 생성 이벤트 발행
-        kafkaTemplate.send("comment.created", String.valueOf(ent.getId()));
+            kafkaTemplate.send("comment.created", String.valueOf(ent.getId()));
+        }
 
         // 회원 댓글인 경우 활동점수 증가
         if (userId != null) {
@@ -181,12 +192,14 @@ public class CommentService {
             }
         }
 
-        // 댓글 삭제(-1) 이벤트
-        ContentStatsUpdateDto message = ContentStatsUpdateDto.builder()
-                .contentId(ent.getContentId())
-                .commentDelta(-1)
-                .build();
-        kafkaTemplate.send("content-stats-update", message);
+        // CONTENT 타입일 때만 Kafka 이벤트 발행
+        if (ent.getTargetType() == CommentTargetType.CONTENT) {
+            ContentStatsUpdateDto message = ContentStatsUpdateDto.builder()
+                    .contentId(ent.getTargetId())
+                    .commentDelta(-1)
+                    .build();
+            kafkaTemplate.send("content-stats-update", message);
+        }
 
         // 회원 댓글인 경우 활동점수 감소
         if (ent.getUserId() != null) {
@@ -235,9 +248,9 @@ public class CommentService {
 
     /** 콘텐츠별 댓글 전체 조회 (루트 댓글) */
     @Transactional(readOnly = true)
-    public List<CommentResponseDto> listCommentsByContent(Long contentId) {
+    public List<CommentResponseDto> listCommentsByTarget(CommentTargetType targetType, Long targetId) {
         // 1) 모든 댓글 한 번에 가져오기 (루트+대댓글 전체)
-        List<CommentEntity> all = commentRepository.findByContentIdOrderByCreatedAtAsc(contentId);
+        List<CommentEntity> all = commentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(targetType, targetId);
 
         // 2) userId 수집 → 최신 사용자 정보 일괄 조회
         Set<Long> userIds = all.stream()
@@ -251,6 +264,7 @@ public class CommentService {
                         User::getId, u -> u));
 
         // 3) id → DTO 초기화
+        // DTO 변환 시 targetType에 따라 다른 정보 조회
         Map<Long, CommentResponseDto> dtoMap = new LinkedHashMap<>();
         for (CommentEntity e : all) {
             String displayName = e.getUserId() != null
@@ -268,7 +282,8 @@ public class CommentService {
             dtoMap.put(e.getId(), CommentResponseDto.builder()
                     .id(e.getId())
                     .parentId(e.getParentId())
-                    .contentId(e.getContentId())
+                    .targetType(e.getTargetType())
+                    .targetId(e.getTargetId())
                     .userId(e.getUserId())
                     .username(displayName)
                     .userPicture(displayPicture)
@@ -296,6 +311,13 @@ public class CommentService {
         return roots;
     }
 
+    /** Post 존재 검증 */
+    private void assertPostExists(Long postId) {
+        postRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Post not found: " + postId));
+    }
+
     /** 대댓글 조회 */
     private List<CommentResponseDto> listReplies(Long parentId) {
         List<CommentEntity> children = commentRepository
@@ -306,14 +328,12 @@ public class CommentService {
     }
 
     /** Entity → DTO */
-    private CommentResponseDto toDto(
-            CommentEntity e,
-            List<CommentResponseDto> replies
-    ) {
+    private CommentResponseDto toDto(CommentEntity e, List<CommentResponseDto> replies) {
         CommentResponseDto dto = CommentResponseDto.builder()
                 .id(e.getId())
                 .parentId(e.getParentId())
-                .contentId(e.getContentId())
+                .targetType(e.getTargetType())
+                .targetId(e.getTargetId())
                 .userId(e.getUserId())
                 .username(e.getUsername())
                 .content(e.getContent())
@@ -332,7 +352,9 @@ public class CommentService {
         Map<Long, Integer> result = new HashMap<>();
 
         for (Long contentId : contentIds) {
-            List<CommentEntity> comments = commentRepository.findByContentIdAndParentIdIsNullOrderByCreatedAtAsc(contentId);
+            List<CommentEntity> comments = commentRepository
+                    .findByTargetTypeAndTargetIdAndParentIdIsNullOrderByCreatedAtAsc(
+                            CommentTargetType.CONTENT, contentId);
             int totalCount = 0;
 
             for (CommentEntity comment : comments) {

@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers("/oauth2/**", "/login/**", "/api/v1/auth/**", "/api/v1/comments/**", "/internal/**", "/api/v1/inquiries/**", "/images/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/notices", "/api/v1/notices/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/posts", "/api/v1/posts/**").permitAll()
                         .requestMatchers("/api/v1/users/**").permitAll()
                         .requestMatchers("/api/v1/users/withdrawn-info").permitAll()
                         .requestMatchers("/api/v1/users/reports/**").permitAll()

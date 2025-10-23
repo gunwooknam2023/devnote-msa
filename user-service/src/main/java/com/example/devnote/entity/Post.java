@@ -93,6 +93,20 @@ public class Post {
     @Builder.Default
     private boolean isRecruiting = true;
 
+    /**
+     * 좋아요 수
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private long likeCount = 0L;
+
+    /**
+     * 싫어요 수
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private long dislikeCount = 0L;
+
     @CreationTimestamp
     private Instant createdAt;
 

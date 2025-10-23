@@ -29,6 +29,7 @@ public class PostDetailResponseDto {
     private long viewCount;
     private long likeCount;
     private long dislikeCount;
+    private String userVoteType;
 
     // Q&A 전용
     private boolean isAdopted;

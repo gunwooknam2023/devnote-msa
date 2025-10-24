@@ -5,5 +5,6 @@ package com.example.devnote.entity.enums;
  */
 public enum ReportTargetType {
     CONTENT,
-    COMMENT
+    COMMENT,
+    POST
 }

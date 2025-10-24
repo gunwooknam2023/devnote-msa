@@ -4,11 +4,13 @@ import com.example.devnote.dto.ApiResponseDto;
 import com.example.devnote.dto.ContentDto;
 import com.example.devnote.dto.ReportRequestDto;
 import com.example.devnote.entity.CommentEntity;
+import com.example.devnote.entity.Post;
 import com.example.devnote.entity.Report;
 import com.example.devnote.entity.User;
 import com.example.devnote.entity.enums.ReportReason;
 import com.example.devnote.entity.enums.ReportTargetType;
 import com.example.devnote.repository.CommentRepository;
+import com.example.devnote.repository.PostRepository;
 import com.example.devnote.repository.ReportRepository;
 import com.example.devnote.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +38,7 @@ public class ReportService {
     private final ReportRepository reportRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
+    private final PostRepository postRepository;
     private final WebClient apiGatewayClient;
 
     /**
@@ -54,12 +57,39 @@ public class ReportService {
         // 3. 신고자 정보 확인 (회원/비회원)
         User reporter = getCurrentUser().orElse(null);
 
-        // 4. Report 엔티티 생성
+        // 4. 신고 대상 정보 추출
+        String authorName = null;
+        Long authorId = null;
+        String targetTitle = null;
+        String targetContent = null;
+
+        if (dto.getTargetType() == ReportTargetType.COMMENT) {
+            CommentEntity comment = commentRepository.findById(dto.getTargetId()).orElse(null);
+            if (comment != null) {
+                authorName = comment.getUsername();
+                authorId = comment.getUserId();
+                targetContent = comment.getContent();
+            }
+        } else if (dto.getTargetType() == ReportTargetType.POST) {
+            Post post = postRepository.findById(dto.getTargetId()).orElse(null);
+            if (post != null) {
+                authorName = post.getUser().getName();
+                authorId = post.getUser().getId();
+                targetTitle = post.getTitle();
+                targetContent = post.getContent();
+            }
+        }
+
+        // 5. Report 엔티티 생성
         Report report = Report.builder()
                 .targetType(dto.getTargetType())
                 .targetId(dto.getTargetId())
                 .reason(dto.getReason())
                 .targetContentSnapshot(targetContentSnapshot)
+                .authorName(authorName)
+                .authorId(authorId)
+                .targetTitle(targetTitle)
+                .targetContent(targetContent)
                 .reporter(reporter)
                 .reporterIp(ipAddress)
                 .isProcessed(false)
@@ -113,10 +143,35 @@ public class ReportService {
                 log.warn("신고 대상 콘텐츠 정보를 가져오는 데 실패했습니다: contentId={}", targetId);
                 return "[정보 조회 실패]";
             }
-        } else { // COMMENT
+        } else if (targetType == ReportTargetType.COMMENT) {
             return commentRepository.findById(targetId)
-                    .map(CommentEntity::getContent)
+                    .map(comment -> {
+                        String content = comment.getContent();
+                        String author = comment.getUsername();
+                        Long userId = comment.getUserId();
+
+                        if (userId != null) {
+                            // 회원 댓글: 작성자 ID와 닉네임 포함
+                            return String.format("작성자: %s (ID: %d)\n내용: %s", author, userId, content);
+                        } else {
+                            // 비회원 댓글: 닉네임만 포함
+                            return String.format("작성자: %s (비회원)\n내용: %s", author, content);
+                        }
+                    })
                     .orElse("[삭제된 댓글]");
+        } else { // POST
+            return postRepository.findById(targetId)
+                    .map(post -> {
+                        String title = post.getTitle();
+                        String content = post.getContent();
+                        String author = post.getUser().getName();
+                        Long userId = post.getUser().getId();
+
+                        // 게시글: 작성자 ID와 닉네임 포함
+                        return String.format("작성자: %s (ID: %d)\n제목: %s\n내용: %s",
+                                author, userId, title, content);
+                    })
+                    .orElse("[삭제된 게시글]");
         }
     }
 

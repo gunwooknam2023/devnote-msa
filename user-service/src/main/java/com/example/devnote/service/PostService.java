@@ -11,6 +11,7 @@ import com.example.devnote.entity.enums.CommentTargetType;
 import com.example.devnote.repository.CommentRepository;
 import com.example.devnote.repository.PostLikeRepository;
 import com.example.devnote.repository.PostRepository;
+import com.example.devnote.repository.PostScrapRepository;
 import com.example.devnote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -37,6 +38,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final PostLikeRepository postLikeRepository;
+    private final PostScrapRepository postScrapRepository;
     private final FileStorageService fileStorageService;
 
     /**
@@ -242,6 +244,20 @@ public class PostService {
         }
     }
 
+    /**
+     * 현재 사용자의 게시글 스크랩 상태 조회 (인증된 사용자용)
+     */
+    public boolean getCurrentUserScrapStatus(Long postId) {
+        try {
+            User user = getCurrentUser();
+            Post post = postRepository.findById(postId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+            return postScrapRepository.existsByUserAndPost(user, post);
+        } catch (Exception e) {
+            return false; // 인증되지 않은 사용자는 false
+        }
+    }
+
 
     /**
      * Post 엔티티를 PostDetailResponseDto로 변환
@@ -254,7 +270,9 @@ public class PostService {
                 .content(post.getContent())
                 .likeCount(post.getLikeCount())
                 .dislikeCount(post.getDislikeCount())
+                .scrapCount(post.getScrapCount())
                 .userVoteType(getCurrentUserVoteType(post.getId()))
+                .isScraped(getCurrentUserScrapStatus(post.getId()))
                 .authorId(post.getUser().getId())
                 .authorName(post.getUser().getName())
                 .authorPicture(post.getUser().getPicture())
@@ -283,6 +301,7 @@ public class PostService {
                 .commentCount(commentCount)
                 .likeCount(post.getLikeCount())
                 .dislikeCount(post.getDislikeCount())
+                .scrapCount(post.getScrapCount())
                 .isAdopted(post.isAdopted())
                 .studyCategory(post.getStudyCategory())
                 .studyMethod(post.getStudyMethod())

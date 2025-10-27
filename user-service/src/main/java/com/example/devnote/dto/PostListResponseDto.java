@@ -28,6 +28,7 @@ public class PostListResponseDto {
     private long commentCount;
     private long likeCount;
     private long dislikeCount;
+    private long scrapCount;
 
     // Q&A 전용
     private boolean isAdopted;

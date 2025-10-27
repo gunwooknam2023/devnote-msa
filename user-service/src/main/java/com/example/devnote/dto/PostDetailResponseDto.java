@@ -29,7 +29,9 @@ public class PostDetailResponseDto {
     private long viewCount;
     private long likeCount;
     private long dislikeCount;
+    private long scrapCount;
     private String userVoteType;
+    private boolean isScraped;
 
     // Q&A 전용
     private boolean isAdopted;

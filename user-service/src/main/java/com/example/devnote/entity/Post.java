@@ -107,6 +107,13 @@ public class Post {
     @Builder.Default
     private long dislikeCount = 0L;
 
+    /**
+     * 스크랩 수
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private long scrapCount = 0L;
+
     @CreationTimestamp
     private Instant createdAt;
 

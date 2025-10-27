@@ -15,7 +15,11 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "posts", indexes = {
-        @Index(name = "idx_posts_board_type_created_at", columnList = "boardType, createdAt DESC")
+        @Index(name = "idx_posts_board_type_created_at", columnList = "boardType, createdAt DESC"),
+        @Index(name = "idx_posts_board_type_like_count", columnList = "boardType, likeCount DESC"),
+        @Index(name = "idx_posts_board_type_view_count", columnList = "boardType, viewCount DESC"),
+        @Index(name = "idx_posts_board_type_scrap_count", columnList = "boardType, scrapCount DESC"),
+        @Index(name = "idx_posts_title", columnList = "title")
 })
 @Getter
 @Setter

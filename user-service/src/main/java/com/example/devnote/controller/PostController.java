@@ -2,6 +2,8 @@ package com.example.devnote.controller;
 
 import com.example.devnote.dto.*;
 import com.example.devnote.entity.enums.BoardType;
+import com.example.devnote.entity.enums.PostSortType;
+import com.example.devnote.entity.enums.SearchType;
 import com.example.devnote.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,13 +36,15 @@ public class PostController {
 
     /**
      * 게시글 목록 조회
-     * @param boardType (선택) 필터링할 게시판 종류 (FREE_BOARD, QNA, STUDY)
      */
     @GetMapping
     public ResponseEntity<ApiResponseDto<Page<PostListResponseDto>>> getPosts(
             @RequestParam(required = false) BoardType boardType,
+            @RequestParam(required = false, defaultValue = "LATEST") PostSortType sortType,
+            @RequestParam(required = false) SearchType searchType,
+            @RequestParam(required = false) String keyword,
             @PageableDefault(size = 10) Pageable pageable) {
-        Page<PostListResponseDto> responsePage = postService.getPosts(boardType, pageable);
+        Page<PostListResponseDto> responsePage = postService.getPosts(boardType, sortType, searchType, keyword, pageable); // ✅ searchType 전달
         return ResponseEntity.ok(new ApiResponseDto<>("게시글 목록을 조회했습니다.", HttpStatus.OK.value(), responsePage));
     }
 

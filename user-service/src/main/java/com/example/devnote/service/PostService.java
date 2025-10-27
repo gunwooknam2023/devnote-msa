@@ -8,14 +8,15 @@ import com.example.devnote.entity.Post;
 import com.example.devnote.entity.User;
 import com.example.devnote.entity.enums.BoardType;
 import com.example.devnote.entity.enums.CommentTargetType;
+import com.example.devnote.entity.enums.PostSortType;
+import com.example.devnote.entity.enums.SearchType;
 import com.example.devnote.repository.CommentRepository;
 import com.example.devnote.repository.PostLikeRepository;
 import com.example.devnote.repository.PostRepository;
 import com.example.devnote.repository.PostScrapRepository;
 import com.example.devnote.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,21 +82,175 @@ public class PostService {
     /**
      * 게시글 목록 조회
      */
+    /**
+     * 게시글 목록 조회
+     */
     @Transactional(readOnly = true)
-    public Page<PostListResponseDto> getPosts(BoardType boardType, Pageable pageable){
-        Page<Post> postPage = (boardType != null)
-                ? postRepository.findByBoardTypeOrderByCreatedAtDesc(boardType, pageable)
-                : postRepository.findAllByOrderByCreatedAtDesc(pageable);
+    public Page<PostListResponseDto> getPosts(BoardType boardType, PostSortType sortType, SearchType searchType, String keyword, Pageable pageable){
+        // 1. 검색 여부 확인
+        boolean isSearching = keyword != null && !keyword.trim().isEmpty();
 
-        // 게시글 댓글수 가져오기 (POST 타입으로 조회)
-        List<Long> postIds = postPage.getContent().stream().map(Post::getId).collect(Collectors.toList());
-        Map<Long, Long> commentCountMap = commentRepository.countCommentsByPostIds(postIds).stream()
+        // 2. MOST_COMMENTED 정렬인지 확인
+        boolean isCommentSorted = sortType == PostSortType.MOST_COMMENTED;
+
+        // 3. MOST_COMMENTED가 아닌 경우: 일반 정렬
+        Page<Post> postPage;
+        if (!isCommentSorted) {
+            // 정렬 기준 설정 및 PageRequest 생성
+            if (sortType == null) {
+                sortType = PostSortType.LATEST;
+            }
+
+            Sort.Direction direction = sortType.getSortDirection().equals("ASC")
+                    ? Sort.Direction.ASC
+                    : Sort.Direction.DESC;
+
+            Sort sort = Sort.by(direction, sortType.getSortField());
+
+            Pageable sortedPageable = PageRequest.of(
+                    pageable.getPageNumber(),
+                    pageable.getPageSize(),
+                    sort
+            );
+
+            // 게시글 조회 (검색 타입 및 검색 여부에 따라 분기)
+            if (isSearching && searchType != null) {
+                // 검색 모드
+                switch (searchType) {
+                    case TITLE:
+                        // 제목으로 검색
+                        if (boardType != null) {
+                            postPage = postRepository.findByBoardTypeAndTitleContaining(boardType, keyword, sortedPageable);
+                        } else {
+                            postPage = postRepository.findByTitleContaining(keyword, sortedPageable);
+                        }
+                        break;
+                    case CONTENT:
+                        // 내용으로 검색
+                        if (boardType != null) {
+                            postPage = postRepository.findByBoardTypeAndContentContaining(boardType, keyword, sortedPageable);
+                        } else {
+                            postPage = postRepository.findByContentContaining(keyword, sortedPageable);
+                        }
+                        break;
+                    case TITLE_CONTENT:
+                        // 제목+내용으로 검색
+                        if (boardType != null) {
+                            postPage = postRepository.findByBoardTypeAndTitleOrContentContaining(boardType, keyword, sortedPageable);
+                        } else {
+                            postPage = postRepository.findByTitleOrContentContaining(keyword, sortedPageable);
+                        }
+                        break;
+                    case AUTHOR:
+                        // 작성자로 검색
+                        if (boardType != null) {
+                            postPage = postRepository.findByBoardTypeAndUser_NameContaining(boardType, keyword, sortedPageable);
+                        } else {
+                            postPage = postRepository.findByUser_NameContaining(keyword, sortedPageable);
+                        }
+                        break;
+                    default:
+                        // 기본값: 제목+내용으로 검색
+                        if (boardType != null) {
+                            postPage = postRepository.findByBoardTypeAndTitleOrContentContaining(boardType, keyword, sortedPageable);
+                        } else {
+                            postPage = postRepository.findByTitleOrContentContaining(keyword, sortedPageable);
+                        }
+                        break;
+                }
+            } else {
+                // 일반 조회 모드
+                if (boardType != null) {
+                    postPage = postRepository.findByBoardType(boardType, sortedPageable);
+                } else {
+                    postPage = postRepository.findAll(sortedPageable);
+                }
+            }
+        } else {
+            // MOST_COMMENTED 정렬: 먼저 정렬 없이 모든 게시글 조회
+            Pageable unsortedPageable = PageRequest.of(0, Integer.MAX_VALUE);
+
+            // 검색 타입에 따라 조회
+            if (isSearching && searchType != null) {
+                // 검색 모드 (정렬 없음)
+                switch (searchType) {
+                    case TITLE:
+                        if (boardType != null) {
+                            postPage = postRepository.findByBoardTypeAndTitleContaining(boardType, keyword, unsortedPageable);
+                        } else {
+                            postPage = postRepository.findByTitleContaining(keyword, unsortedPageable);
+                        }
+                        break;
+                    case CONTENT:
+                        if (boardType != null) {
+                            postPage = postRepository.findByBoardTypeAndContentContaining(boardType, keyword, unsortedPageable);
+                        } else {
+                            postPage = postRepository.findByContentContaining(keyword, unsortedPageable);
+                        }
+                        break;
+                    case TITLE_CONTENT:
+                        if (boardType != null) {
+                            postPage = postRepository.findByBoardTypeAndTitleOrContentContaining(boardType, keyword, unsortedPageable);
+                        } else {
+                            postPage = postRepository.findByTitleOrContentContaining(keyword, unsortedPageable);
+                        }
+                        break;
+                    case AUTHOR:
+                        if (boardType != null) {
+                            postPage = postRepository.findByBoardTypeAndUser_NameContaining(boardType, keyword, unsortedPageable);
+                        } else {
+                            postPage = postRepository.findByUser_NameContaining(keyword, unsortedPageable);
+                        }
+                        break;
+                    default:
+                        if (boardType != null) {
+                            postPage = postRepository.findByBoardTypeAndTitleOrContentContaining(boardType, keyword, unsortedPageable);
+                        } else {
+                            postPage = postRepository.findByTitleOrContentContaining(keyword, unsortedPageable);
+                        }
+                        break;
+                }
+            } else {
+                // 일반 조회 모드 (정렬 없음)
+                if (boardType != null) {
+                    postPage = postRepository.findByBoardType(boardType, unsortedPageable);
+                } else {
+                    postPage = postRepository.findAll(unsortedPageable);
+                }
+            }
+        }
+
+        // 4. 게시글 댓글수 가져오기
+        List<Post> allPosts = new ArrayList<>(postPage.getContent());
+        Map<Long, Long> commentCountMap = commentRepository.countCommentsByPostIds(
+                        allPosts.stream().map(Post::getId).collect(Collectors.toList())
+                ).stream()
                 .collect(Collectors.toMap(
                         map -> ((Number) map.get("postId")).longValue(),
                         map -> ((Number) map.get("commentCount")).longValue()
                 ));
 
-        return postPage.map(post -> toListDto(post, commentCountMap.getOrDefault(post.getId(), 0L)));
+        // 5. 정렬방식이 MOST_COMMENTED 일때 댓글 수 기준으로 정렬
+        if (isCommentSorted) {
+            allPosts.sort((p1, p2) -> {
+                long count1 = commentCountMap.getOrDefault(p1.getId(), 0L);
+                long count2 = commentCountMap.getOrDefault(p2.getId(), 0L);
+                return Long.compare(count2, count1);
+            });
+        }
+
+        // 6. 페이지네이션 적용
+        Page<Post> finalPage;
+        if (isCommentSorted) {
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), allPosts.size());
+            List<Post> pagedPosts = allPosts.subList(start, end);
+            finalPage = new PageImpl<>(pagedPosts, pageable, allPosts.size());
+        } else {
+            finalPage = postPage;
+        }
+
+        return finalPage.map(post -> toListDto(post, commentCountMap.getOrDefault(post.getId(), 0L)));
     }
 
     /**

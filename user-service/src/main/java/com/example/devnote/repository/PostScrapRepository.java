@@ -25,4 +25,9 @@ public interface PostScrapRepository extends JpaRepository<PostScrap, Long> {
      * 특정 사용자가 특정 게시글을 스크랩했는지 확인
      */
     boolean existsByUserAndPost(User user, Post post);
+
+    /**
+     * 특정 사용자의 스크랩 게시글 개수
+     */
+    long countByUser(User user);
 }

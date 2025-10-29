@@ -20,6 +20,7 @@ public class PostListResponseDto {
     private String title;
 
     // 작성자 정보
+    private Long authorId;
     private String authorName;
     private String authorPicture;
 

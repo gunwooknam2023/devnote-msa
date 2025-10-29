@@ -98,6 +98,12 @@ public class UserProfileService {
         // 작성한 댓글 개수 (대댓글 포함)
         int commentCount = commentRepo.countTotalCommentsByUserId(userId);
 
+        // 작성한 게시글 수
+        int postCount = Math.toIntExact(postRepository.countByUser(user));
+
+        // 스크랩한 게시글 수
+        int scrapedPostCount = Math.toIntExact(postScrapRepo.countByUser(user));
+
         return UserProfileDto.builder()
                 .id(user.getId())
                 .name(user.getName())
@@ -108,6 +114,8 @@ public class UserProfileService {
                 .favoriteNewsCount(favoriteNewsCount)
                 .favoriteChannelCount(favoriteChannelCount)
                 .commentCount(commentCount)
+                .postCount(postCount)
+                .scrapedPostCount(scrapedPostCount)
                 .build();
     }
 

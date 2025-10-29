@@ -19,4 +19,6 @@ public class UserProfileDto {
     private Integer favoriteNewsCount;
     private Integer favoriteChannelCount;
     private Integer commentCount;
+    private Integer postCount;
+    private Integer scrapedPostCount;
 }

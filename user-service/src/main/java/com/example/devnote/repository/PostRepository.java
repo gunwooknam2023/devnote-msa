@@ -86,4 +86,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 특정 사용자가 작성한 게시글을 최신순으로 조회 (페이지네이션)
      */
     Page<Post> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
+
+    /**
+     * 특정 사용자의 스크랩 게시글 개수
+     */
+    long countByUser(User user);
 }

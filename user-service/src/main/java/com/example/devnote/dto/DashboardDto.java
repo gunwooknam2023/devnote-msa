@@ -27,6 +27,12 @@ public class DashboardDto {
     /** 찜한 채널들 */
     private Page<ChannelSubscriptionDto> favoriteChannels;
 
+    /** 작성한 게시글들 */
+    private Page<PostListResponseDto> posts;
+
+    /** 내가 스크랩한 게시글 */
+    private Page<PostListResponseDto> scrapedPosts;
+
     /** 작성한 댓글들 */
     private Page<CommentResponseDto> comments;
 

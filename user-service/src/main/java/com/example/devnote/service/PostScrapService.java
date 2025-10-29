@@ -66,6 +66,7 @@ public class PostScrapService {
                     .id(post.getId())
                     .boardType(post.getBoardType())
                     .title(post.getTitle())
+                    .authorId(post.getUser().getId())
                     .authorName(post.getUser().getName())
                     .authorPicture(post.getUser().getPicture())
                     .viewCount(post.getViewCount())

@@ -1,6 +1,7 @@
 package com.example.devnote.repository;
 
 import com.example.devnote.entity.Post;
+import com.example.devnote.entity.User;
 import com.example.devnote.entity.enums.BoardType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -80,4 +81,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 작성자 이름으로 검색 (특정 게시판)
      */
     Page<Post> findByBoardTypeAndUser_NameContaining(BoardType boardType, String keyword, Pageable pageable);
+
+    /**
+     * 특정 사용자가 작성한 게시글을 최신순으로 조회 (페이지네이션)
+     */
+    Page<Post> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
 }

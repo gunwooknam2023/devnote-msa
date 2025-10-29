@@ -2,10 +2,7 @@ package com.example.devnote.service;
 
 import com.example.devnote.config.JwtTokenProvider;
 import com.example.devnote.dto.*;
-import com.example.devnote.entity.CommentEntity;
-import com.example.devnote.entity.FavoriteContent;
-import com.example.devnote.entity.User;
-import com.example.devnote.entity.WithdrawnUser;
+import com.example.devnote.entity.*;
 import com.example.devnote.entity.enums.CommentTargetType;
 import com.example.devnote.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +35,7 @@ public class UserProfileService {
     private final FavoriteChannelRepository favChannelRepo;
     private final CommentRepository commentRepo;
     private final PostRepository postRepository;
+    private final PostScrapRepository postScrapRepo;
     private final WebClient apiGatewayClient;
     private final WithdrawnUserRepository withdrawnUserRepo;
     private final CommentService commentService;
@@ -158,17 +156,47 @@ public class UserProfileService {
                 .toList();
         Page<ChannelSubscriptionDto> favoriteChannelsPage = toPage(favoriteChannelsList, pageable);
 
-        // 3. 작성한 댓글 처리 (DB에서 직접 페이지네이션)
+        // 3. 작성한 게시글 (최신순)
+        Page<Post> postPage = postRepository.findByUserOrderByCreatedAtDesc(currentUser, pageable);
+        Page<PostListResponseDto> postsPage = postPage.map(this::toPostListDto);
+
+        // 4. 스크랩한 게시글 (최신순)
+        Page<PostScrap> scrapPage = postScrapRepo.findByUserOrderByCreatedAtDesc(currentUser, pageable);
+        Page<PostListResponseDto> scrapedPostsPage = scrapPage.map(ps -> toPostListDto(ps.getPost()));
+
+        // 5. 작성한 댓글 (최신순)
         Page<CommentEntity> commentPage = commentRepo.findByUserIdOrderByCreatedAtDesc(userId, pageable);
         Page<CommentResponseDto> commentsPage = commentPage.map(this::toCommentDto);
 
-        // 4. 최종 DashboardDto 조립
+
         return DashboardDto.builder()
                 .favoriteVideos(favoriteVideosPage)
                 .favoriteNews(favoriteNewsPage)
                 .favoriteChannels(favoriteChannelsPage)
+                .posts(postsPage)
+                .scrapedPosts(scrapedPostsPage)
                 .comments(commentsPage)
                 .activityScore(currentUser.getActivityScore())
+                .build();
+    }
+
+    /** Post -> PostListResponseDto (대시보드용 요약) */
+    private PostListResponseDto toPostListDto(Post post) {
+        long commentCount = commentRepo.countByTargetTypeAndTargetId(CommentTargetType.POST, post.getId());
+
+        return PostListResponseDto.builder()
+                .id(post.getId())
+                .boardType(post.getBoardType())
+                .title(post.getTitle())
+                .authorId(post.getUser().getId())
+                .authorName(post.getUser().getName())
+                .authorPicture(post.getUser().getPicture())
+                .viewCount(post.getViewCount())
+                .likeCount(post.getLikeCount())
+                .dislikeCount(post.getDislikeCount())
+                .scrapCount(post.getScrapCount())
+                .commentCount(commentCount)
+                .createdAt(post.getCreatedAt())
                 .build();
     }
 

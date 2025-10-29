@@ -56,4 +56,7 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
 
     // targetType과 targetId로 삭제
     void deleteAllByTargetTypeAndTargetId(CommentTargetType targetType, Long targetId);
+
+    /** 대상 타입/ID로 댓글 수 집계 */
+    long countByTargetTypeAndTargetId(CommentTargetType targetType, Long targetId);
 }

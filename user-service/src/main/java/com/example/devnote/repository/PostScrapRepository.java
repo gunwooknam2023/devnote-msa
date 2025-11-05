@@ -30,4 +30,9 @@ public interface PostScrapRepository extends JpaRepository<PostScrap, Long> {
      * 특정 사용자의 스크랩 게시글 개수
      */
     long countByUser(User user);
+
+    /**
+     * 특정 사용자의 모든 게시글 스크랩 기록 삭제
+     */
+    void deleteByUser(User user);
 }

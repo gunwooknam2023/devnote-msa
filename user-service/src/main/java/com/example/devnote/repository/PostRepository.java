@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface PostRepository extends JpaRepository<Post, Long> {
 
     /**
@@ -91,4 +93,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 특정 사용자의 스크랩 게시글 개수
      */
     long countByUser(User user);
+
+    /**
+     * 특정 사용자가 작성한 모든 게시글 조회 (탈퇴 처리용)
+     */
+    List<Post> findByUser(User user);
 }

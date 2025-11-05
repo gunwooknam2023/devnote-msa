@@ -43,6 +43,13 @@ public class UserProfileService {
     private final ChannelFavoriteService channelFavoriteService;
     private final JwtTokenProvider tokenProvider;
     private final FileStorageService fileStorageService;
+    private final PostLikeRepository postLikeRepository;
+    private final PostScrapRepository postScrapRepository;
+    private final CommentLikeRepository commentLikeRepository;
+    private final ViewHistoryRepository viewHistoryRepository;
+    private final ReportRepository reportRepository;
+    private final InquiryRepository inquiryRepository;
+    private final NoticeRepository noticeRepository;
 
     @Value("${app.default-profile-image-url}")
     private String defaultProfileImageUrl;
@@ -209,6 +216,25 @@ public class UserProfileService {
     }
 
     /**
+     * 탈퇴한 사용자 처리
+     */
+    private User getOrCreateWithdrawnUser() {
+        String withdrawnEmail = "system@withdrawn.user";
+        return userRepo.findByEmail(withdrawnEmail)
+                .orElseGet(() -> {
+                    User withdrawnUser = User.builder()
+                            .email(withdrawnEmail)
+                            .provider("SYSTEM")
+                            .providerId("WITHDRAWN_USER")
+                            .name("탈퇴한 사용자")
+                            .picture(defaultProfileImageUrl)
+                            .activityScore(0)
+                            .build();
+                    return userRepo.save(withdrawnUser);
+                });
+    }
+
+    /**
      * 현재 로그인된 사용자의 회원 탈퇴를 처리. 모든 활동 기록을 삭제하고, 재가입 방지를 위한 정보를 남긴 뒤, 회원 정보를 최종 삭제
      */
     @Transactional
@@ -246,7 +272,59 @@ public class UserProfileService {
             commentService.deleteComment(comment.getId(), null);
         });
 
-        // 4. 모든 활동 기록 삭제 후, 최종적으로 User 엔티티 삭제
+        // 3-4. 게시글 좋아요/싫어요 일괄 삭제
+        log.info("게시글 좋아요/싫어요 기록 삭제를 시작합니다.");
+        postLikeRepository.deleteByUser(user);
+
+        // 3-5. 게시글 스크랩 일괄 삭제
+        log.info("게시글 스크랩 기록 삭제를 시작합니다.");
+        postScrapRepository.deleteByUser(user);
+
+        // 3-6. 댓글 좋아요/싫어요 일괄 삭제
+        log.info("댓글 좋아요/싫어요 기록 삭제를 시작합니다.");
+        commentLikeRepository.deleteByUser(user);
+
+        // 3-7. 시청 기록 일괄 삭제
+        log.info("시청 기록 삭제를 시작합니다.");
+        viewHistoryRepository.deleteByUser(user);
+
+        // 4. 탈퇴 유저로 표시할 데이터들 처리
+        User withdrawnSystemUser = getOrCreateWithdrawnUser();
+        log.info("탈퇴 유저로 표시할 데이터 처리 시작 (시스템 유저 ID: {})", withdrawnSystemUser.getId());
+
+        // 4-1. 작성한 게시글을 탈퇴 유저로 재할당
+        List<Post> posts = postRepository.findByUser(user);
+        log.info("작성한 게시글 {}건을 탈퇴 유저로 재할당합니다.", posts.size());
+        posts.forEach(post -> {
+            post.setUser(withdrawnSystemUser);
+            postRepository.save(post);
+        });
+
+        // 4-2. 작성한 공지사항을 탈퇴 유저로 재할당
+        List<Notice> notices = noticeRepository.findByUser(user);
+        log.info("작성한 공지사항 {}건을 탈퇴 유저로 재할당합니다.", notices.size());
+        notices.forEach(notice -> {
+            notice.setUser(withdrawnSystemUser);
+            noticeRepository.save(notice);
+        });
+
+        // 4-3. 신고 내역의 reporter를 null로 설정
+        List<Report> reports = reportRepository.findByReporter(user);
+        log.info("신고 내역 {}건의 reporter를 null로 설정합니다.", reports.size());
+        reports.forEach(report -> {
+            report.setReporter(null);
+            reportRepository.save(report);
+        });
+
+        // 4-4. 문의사항의 userId를 null로 설정
+        List<Inquiry> inquiries = inquiryRepository.findByUserId(userId);
+        log.info("문의사항 {}건의 userId를 null로 설정합니다.", inquiries.size());
+        inquiries.forEach(inquiry -> {
+            inquiry.setUserId(null);
+            inquiryRepository.save(inquiry);
+        });
+
+        // 5. 모든 활동 기록 처리 후, 최종적으로 User 엔티티 삭제
         userRepo.delete(user);
         log.info("회원 정보 최종 삭제 완료: userId={}", userId);
     }

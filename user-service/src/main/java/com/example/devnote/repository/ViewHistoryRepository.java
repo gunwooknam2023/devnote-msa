@@ -32,5 +32,10 @@ public interface ViewHistoryRepository extends JpaRepository<ViewHistory, Long> 
      */
     @Transactional
     long deleteByUserAndContentId(User user, Long contentId);
+
+    /**
+     * 특정 사용자의 모든 시청 기록 삭제
+     */
+    void deleteByUser(User user);
 }
 

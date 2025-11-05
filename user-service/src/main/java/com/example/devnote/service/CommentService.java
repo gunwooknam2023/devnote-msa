@@ -218,6 +218,9 @@ public class CommentService {
 
             commentRepository.save(ent);
         } else {
+            // 하드 삭제 전에 해당 댓글의 모든 좋아요/싫어요 삭제
+            commentLikeRepository.deleteByComment(ent);
+
             // 하드 삭제
             Long pareneId = ent.getParentId();
             commentRepository.delete(ent);
@@ -240,6 +243,7 @@ public class CommentService {
         CommentEntity parent = opt.get();
 
         if (parent.isDeleted() && !commentRepository.existsByParentId(parent.getId())) {
+            commentLikeRepository.deleteByComment(parent);
             Long next = parent.getParentId();
             commentRepository.delete(parent);
 

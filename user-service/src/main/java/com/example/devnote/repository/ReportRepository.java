@@ -1,10 +1,12 @@
 package com.example.devnote.repository;
 
 import com.example.devnote.entity.Report;
+import com.example.devnote.entity.User;
 import com.example.devnote.entity.enums.ReportTargetType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 public interface ReportRepository extends JpaRepository<Report, Long> {
@@ -15,4 +17,9 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
      */
     Optional<Report> findFirstByTargetTypeAndTargetIdAndReporterIpAndCreatedAtAfterOrderByCreatedAtDesc(
             ReportTargetType targetType, Long targetId, String reporterIp, Instant after);
+
+    /**
+     * 특정 사용자가 신고한 모든 신고 내역 조회 (탈퇴 처리용)
+     */
+    List<Report> findByReporter(User reporter);
 }

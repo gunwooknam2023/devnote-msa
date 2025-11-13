@@ -3,8 +3,10 @@ package com.example.devnote.news_youtube_service.controller;
 import com.example.devnote.news_youtube_service.config.KafkaProducerConfig;
 import com.example.devnote.news_youtube_service.dto.ApiResponseDto;
 import com.example.devnote.news_youtube_service.dto.ChannelSubscriptionRequestDto;
+import com.example.devnote.news_youtube_service.dto.ChannelSubscriptionSummaryDto;
 import com.example.devnote.news_youtube_service.entity.ChannelSubscription;
 import com.example.devnote.news_youtube_service.repository.ChannelSubscriptionRepository;
+import com.example.devnote.news_youtube_service.service.ChannelSubscriptionQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,7 @@ import java.util.List;
 @RequestMapping("/api/v1/channels")
 public class ChannelSubscriptionController {
     private final ChannelSubscriptionRepository channelSubscriptionRepository;
+    private final ChannelSubscriptionQueryService channelSubscriptionQueryService;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     /** 신규 채널 등록 (초기Loaded=false) */
@@ -98,6 +101,40 @@ public class ChannelSubscriptionController {
                         .message("Channel deleted and event published")
                         .statusCode(HttpStatus.OK.value())
                         .data(null)
+                        .build()
+        );
+    }
+
+    /**
+     * 전체 유튜브 채널 구독 현황
+     */
+    @GetMapping("/youtube/subscriptions")
+    public ResponseEntity<ApiResponseDto<List<ChannelSubscriptionSummaryDto>>> getYoutubeSubscriptions() {
+        List<ChannelSubscriptionSummaryDto> data =
+                channelSubscriptionQueryService.getSubscriptionsBySource("YOUTUBE");
+
+        return ResponseEntity.ok(
+                ApiResponseDto.<List<ChannelSubscriptionSummaryDto>>builder()
+                        .message("Fetched youtube subscriptions")
+                        .statusCode(200)
+                        .data(data)
+                        .build()
+        );
+    }
+
+    /**
+     * 전체 뉴스 채널 구독 현황
+     */
+    @GetMapping("/news/subscriptions")
+    public ResponseEntity<ApiResponseDto<List<ChannelSubscriptionSummaryDto>>> getNewsSubscriptions() {
+        List<ChannelSubscriptionSummaryDto> data =
+                channelSubscriptionQueryService.getSubscriptionsBySource("NEWS");
+
+        return ResponseEntity.ok(
+                ApiResponseDto.<List<ChannelSubscriptionSummaryDto>>builder()
+                        .message("Fetched news subscriptions")
+                        .statusCode(200)
+                        .data(data)
                         .build()
         );
     }

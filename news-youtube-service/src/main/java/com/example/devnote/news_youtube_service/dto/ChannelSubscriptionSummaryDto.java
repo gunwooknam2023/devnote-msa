@@ -12,6 +12,7 @@ import lombok.*;
 @Builder
 public class ChannelSubscriptionSummaryDto {
 
+    private String channelId;
     private String channelThumbnail;
     private String channelName;
     private String source;

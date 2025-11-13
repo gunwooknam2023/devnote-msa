@@ -29,6 +29,7 @@ public class ChannelSubscriptionQueryService {
 
     private ChannelSubscriptionSummaryDto toSummaryDto(ChannelSubscription entity) {
         return ChannelSubscriptionSummaryDto.builder()
+                .channelId(entity.getChannelId())
                 .channelThumbnail(entity.getChannelThumbnailUrl())
                 .channelName(entity.getYoutubeName())
                 .source(entity.getSource())

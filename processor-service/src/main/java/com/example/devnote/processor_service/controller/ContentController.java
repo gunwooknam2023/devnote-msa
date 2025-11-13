@@ -98,26 +98,27 @@ public class ContentController {
 
     /**
      * 콘텐츠 삭제 + Kafka로 삭제 이벤트 발행
+     * 2025.11.13 임시 주석 처리 -> 추후 인증인가 추가예정
      */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponseDto<Void>> deleteContent(@PathVariable Long id) {
-        // 1) 존재 검증
-        contentService.verifyExists(id);
-
-        // 2) DB에서 삭제
-        contentService.deleteById(id);
-
-        // 3) Kafka로 삭제 이벤트 전송 (key: 콘텐츠 ID)
-        kafkaTemplate.send("content.deleted", String.valueOf(id));
-
-        return ResponseEntity.ok(
-                ApiResponseDto.<Void>builder()
-                        .message("Content deleted and event published")
-                        .statusCode(200)
-                        .data(null)
-                        .build()
-        );
-    }
+//    @DeleteMapping("/{id}")
+//    public ResponseEntity<ApiResponseDto<Void>> deleteContent(@PathVariable Long id) {
+//        // 1) 존재 검증
+//        contentService.verifyExists(id);
+//
+//        // 2) DB에서 삭제
+//        contentService.deleteById(id);
+//
+//        // 3) Kafka로 삭제 이벤트 전송 (key: 콘텐츠 ID)
+//        kafkaTemplate.send("content.deleted", String.valueOf(id));
+//
+//        return ResponseEntity.ok(
+//                ApiResponseDto.<Void>builder()
+//                        .message("Content deleted and event published")
+//                        .statusCode(200)
+//                        .data(null)
+//                        .build()
+//        );
+//    }
 
     /**
      * 카테고리별 콘텐츠 개수 조회

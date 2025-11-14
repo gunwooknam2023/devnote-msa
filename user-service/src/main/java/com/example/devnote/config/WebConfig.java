@@ -13,6 +13,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${file.profile-upload-dir}")
     private String profileUploadDir;
 
+    @Value("${file.posts-upload-dir}")
+    private String postsUploadDir;
+
     /**
      * 정적 리소스 핸들러를 추가하여 URL과 실제 파일 경로를 매핑
      */
@@ -28,8 +31,9 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/images/profile/**")
                 .addResourceLocations("file:" + profileUploadDir + "/");
 
-        // 게시글 이미지 접근 핸들러 추가
+        // /images/posts/ 로 시작하는 URL 요청이 오면
+        // file:./uploads/posts/ 경로에서 파일을 찾아 반환
         registry.addResourceHandler("/images/posts/**")
-                .addResourceLocations("file:./uploads/posts/");
+                .addResourceLocations("file:" + postsUploadDir + "/");
     }
 }

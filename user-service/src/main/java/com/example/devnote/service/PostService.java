@@ -76,12 +76,13 @@ public class PostService {
                 .build();
 
         Post savedPost = postRepository.save(post);
+
+        // 게시글 작성시 활동점수 +3
+        userRepository.incrementActivityScoreBy(user.getId(), 3);
+
         return toDetailDto(savedPost);
     }
 
-    /**
-     * 게시글 목록 조회
-     */
     /**
      * 게시글 목록 조회
      */
@@ -316,7 +317,10 @@ public class PostService {
         // 2. 게시글에 달린 댓글 삭제 (POST 타입으로 지정)
         commentRepository.deleteAllByTargetTypeAndTargetId(CommentTargetType.POST, postId);
 
-        // 3. 게시글 삭제
+        // 3. 게시글 삭제시 활동점수 -3
+        userRepository.decrementActivityScoreBy(user.getId(), 3);
+
+        // 4. 게시글 삭제
         postRepository.delete(post);
     }
 

@@ -13,15 +13,25 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByProviderAndProviderId(String provider, String providerId);
     Optional<User> findByEmail(String email);
 
-    /** 활동점수 증가 */
+    /** 활동점수 증가 (+1)*/
     @Modifying
     @Query("UPDATE User u SET u.activityScore = u.activityScore + 1 WHERE u.id = :userId")
     void incrementActivityScore(@Param("userId") Long userId);
 
-    /** 활동점수 감소 */
+    /** 활동점수 감소 (-1)*/
     @Modifying
     @Query("UPDATE User u SET u.activityScore = u.activityScore - 1 WHERE u.id = :userId")
     void decrementActivityScore(@Param("userId") Long userId);
+
+    /** 활동점수 증가 (가변) */
+    @Modifying
+    @Query("UPDATE User u SET u.activityScore = u.activityScore + :points WHERE u.id = :userId")
+    void incrementActivityScoreBy(@Param("userId") Long userId, @Param("points") Integer points);
+
+    /** 활동점수 감소 (가변) */
+    @Modifying
+    @Query("UPDATE User u SET u.activityScore = u.activityScore - :points WHERE u.id = :userId")
+    void decrementActivityScoreBy(@Param("userId") Long userId, @Param("points") Integer points);
 
     /**
      * 활동 점수가 가장 높은 사용자 상위 10명을 조회

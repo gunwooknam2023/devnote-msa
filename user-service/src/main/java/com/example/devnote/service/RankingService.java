@@ -63,7 +63,7 @@ public class RankingService {
      * 활동 점수가 높은 사용자 TOP 10 조회
      */
     public List<RankedUserDto> getTopActiveUsers() {
-        return userRepository.findTop10ByOrderByActivityScoreDesc().stream()
+        return userRepository.findTop10ActiveUsersExcludingWithdrawn().stream()
                 .map(this::toRankedUserDto)
                 .collect(Collectors.toList());
     }

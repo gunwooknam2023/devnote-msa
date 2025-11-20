@@ -27,4 +27,17 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * 활동 점수가 가장 높은 사용자 상위 10명을 조회
      */
     List<User> findTop10ByOrderByActivityScoreDesc();
+
+    /**
+     * 활동 점수가 0보다 크고 탈퇴하지 않은 사용자 중 상위 10명 조회
+     * - 활동 점수 > 0
+     * - 탈퇴한 사용자 제외 (providerId != "WITHDRAWN_USER" AND email != "system@withdrawn.user")
+     */
+    @Query("SELECT u FROM User u " +
+            "WHERE u.activityScore > 0 " +
+            "AND u.providerId != 'WITHDRAWN_USER' " +
+            "AND u.email != 'system@withdrawn.user' " +
+            "ORDER BY u.activityScore DESC " +
+            "LIMIT 10")
+    List<User> findTop10ActiveUsersExcludingWithdrawn();
 }

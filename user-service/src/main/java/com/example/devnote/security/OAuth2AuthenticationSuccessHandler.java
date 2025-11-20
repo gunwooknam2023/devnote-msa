@@ -4,6 +4,7 @@ import com.example.devnote.config.JwtTokenProvider;
 import com.example.devnote.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -14,6 +15,8 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 
@@ -55,8 +58,59 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         // 4. HttpOnly 쿠키에 토큰을 설정
         setTokenCookies(response, accessToken, refreshToken);
 
-        // 5. 프론트엔드로 리다이렉트
-        response.sendRedirect(frontendUrls.get(0));
+        // 5. next 파라미터 확인
+        String redirectPath = getRedirectPath(request, response);
+        
+        // 6. 프론트엔드로 리다이렉트
+        String redirectUrl = frontendUrls.get(0) + redirectPath;
+        response.sendRedirect(redirectUrl);
+    }
+
+    /**
+     * 리다이렉트 경로를 결정하는 메서드
+     * 1. 세션에서 "oauth2_redirect_uri" 확인
+     * 2. 쿠키에서 "next" 확인
+     * 3. 기본값 "/" 반환
+     */
+    private String getRedirectPath(HttpServletRequest request, HttpServletResponse response) {
+        // 1. 세션에서 확인
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            String redirectUri = (String) session.getAttribute("oauth2_redirect_uri");
+            if (redirectUri != null && !redirectUri.isEmpty()) {
+                // 세션에서 읽은 후 삭제
+                session.removeAttribute("oauth2_redirect_uri");
+                try {
+                    // URL 디코딩
+                    return URLDecoder.decode(redirectUri, StandardCharsets.UTF_8);
+                } catch (Exception e) {
+                    return redirectUri;
+                }
+            }
+        }
+
+        // 2. 쿠키에서 확인
+        jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if ("next".equals(cookie.getName())) {
+                    try {
+                        String nextPath = URLDecoder.decode(cookie.getValue(), StandardCharsets.UTF_8);
+                        // 쿠키 삭제를 위한 응답 쿠키 설정 (만료)
+                        ResponseCookie deleteCookie = ResponseCookie.from("next", "")
+                                .path("/")
+                                .maxAge(0)
+                                .build();
+                        response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
+                        return nextPath;
+                    } catch (Exception e) {
+                        return cookie.getValue();
+                    }
+                }
+            }
+        }
+
+        return "/";
     }
 
     /**

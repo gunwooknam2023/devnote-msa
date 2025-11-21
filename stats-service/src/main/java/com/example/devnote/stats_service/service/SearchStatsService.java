@@ -14,6 +14,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,9 @@ public class SearchStatsService {
     private final EsSearchLogRepository searchLogRepository;
     private final StringRedisTemplate redisTemplate;
     private static final String RANKING_KEY = "ranking:search_terms";
+
+    private static final Pattern SAFE_SEARCH_TERM =
+            Pattern.compile("^[a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\\s._\\-+#]{1,50}$");
 
     /**
      * 10분마다 실행되어 인기 검색어 랭킹을 갱신
@@ -74,7 +78,21 @@ public class SearchStatsService {
      */
     private void addScores(Map<String, Double> scoreMap, List<EsSearchLog> logs, double weight) {
         for (EsSearchLog log : logs) {
-            scoreMap.merge(log.getQuery(), weight, Double::sum);
+            String query = log.getQuery();
+            if (isValidSearchTerm(query)) {
+                scoreMap.merge(query, weight, Double::sum);
+            }
         }
+    }
+
+    // 유효성 검사 로직
+    private boolean isValidSearchTerm(String term) {
+        if (term == null) return false;
+
+        String trimmed = term.trim();
+        if (trimmed.isEmpty()) return false;
+
+        // 정규식 매칭 여부 확인
+        return SAFE_SEARCH_TERM.matcher(trimmed).matches();
     }
 }

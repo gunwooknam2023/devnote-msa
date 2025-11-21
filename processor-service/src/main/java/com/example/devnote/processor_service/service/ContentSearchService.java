@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,10 +32,18 @@ public class ContentSearchService {
     private final ElasticsearchOperations elasticsearchOperations;
     private final StringRedisTemplate redisTemplate;
 
+    private static final Pattern SAFE_SEARCH_TERM =
+            Pattern.compile("^[a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\\s._\\-+#]{1,50}$");
+
     /**
      * 키워드로 콘텐츠를 검색하고, IP기반으로 10분에 한 번씩 검색어 로그 남기기
      */
     public Page<EsContent> search(String keyword, String source, String category, String sortOption, Pageable pageable, HttpServletRequest request) {
+        // 검색어 유효성 검사
+        if (!isValidSearchTerm(keyword)) {
+            return Page.empty(pageable);
+        }
+
         // 검색어 로깅 시도
         logSearchQuery(keyword, request);
 
@@ -84,6 +93,17 @@ public class ContentSearchService {
                 finalPageable,
                 searchHits::getTotalHits
         );
+    }
+
+    // 유효성 검사 로직
+    private boolean isValidSearchTerm(String term) {
+        if (term == null) return false;
+
+        String trimmed = term.trim();
+        if (trimmed.isEmpty()) return false;
+
+        // 정규식 매칭 여부 확인
+        return SAFE_SEARCH_TERM.matcher(trimmed).matches();
     }
 
 

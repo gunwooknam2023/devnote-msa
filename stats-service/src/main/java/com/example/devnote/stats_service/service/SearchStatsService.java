@@ -74,7 +74,40 @@ public class SearchStatsService {
      */
     private void addScores(Map<String, Double> scoreMap, List<EsSearchLog> logs, double weight) {
         for (EsSearchLog log : logs) {
-            scoreMap.merge(log.getQuery(), weight, Double::sum);
+            String query = log.getQuery();
+            if (isValidSearchTerm(query)) {
+                scoreMap.merge(query, weight, Double::sum);
+            }
         }
+    }
+
+    // 유효성 검사 로직
+    private boolean isValidSearchTerm(String term) {
+        if (term == null || term.trim().isEmpty()) {
+            return false;
+        }
+
+        // 1. 길이 제한
+        if (term.length() > 50) {
+            return false;
+        }
+        // 2. SQL 인젝션 및 특수문자 패턴 차단
+        // - SQL 주석: --, #, /*
+        // - SQL 키워드: SELECT, UNION, SLEEP, BENCHMARK 등 (대소문자 무관)
+        // - 시스템 함수 호출 패턴: (, )
+        String lowerTerm = term.toLowerCase();
+        if (lowerTerm.contains("--") || lowerTerm.contains("/*") || lowerTerm.contains("#")) {
+            return false;
+        }
+
+        if (lowerTerm.matches(".*\\b(select|union|insert|update|delete|drop|sleep|benchmark|pg_sleep)\\b.*")) {
+            return false;
+        }
+
+        // 3. 과도한 특수문자 포함 여부
+        if (lowerTerm.matches(".*[;{}].*")) {
+            return false;
+        }
+        return true;
     }
 }

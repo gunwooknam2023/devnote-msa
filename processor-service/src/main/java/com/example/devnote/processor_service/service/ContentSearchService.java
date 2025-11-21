@@ -35,6 +35,11 @@ public class ContentSearchService {
      * 키워드로 콘텐츠를 검색하고, IP기반으로 10분에 한 번씩 검색어 로그 남기기
      */
     public Page<EsContent> search(String keyword, String source, String category, String sortOption, Pageable pageable, HttpServletRequest request) {
+        // 검색어 유효성 검사
+        if (!isValidSearchTerm(keyword)) {
+            return Page.empty(pageable);
+        }
+
         // 검색어 로깅 시도
         logSearchQuery(keyword, request);
 
@@ -84,6 +89,36 @@ public class ContentSearchService {
                 finalPageable,
                 searchHits::getTotalHits
         );
+    }
+
+    // 유효성 검사 로직
+    private boolean isValidSearchTerm(String term) {
+        if (term == null || term.trim().isEmpty()) {
+            return false;
+        }
+
+        // 1. 길이 제한
+        if (term.length() > 50) {
+            return false;
+        }
+        // 2. SQL 인젝션 및 특수문자 패턴 차단
+        // - SQL 주석: --, #, /*
+        // - SQL 키워드: SELECT, UNION, SLEEP, BENCHMARK 등 (대소문자 무관)
+        // - 시스템 함수 호출 패턴: (, )
+        String lowerTerm = term.toLowerCase();
+        if (lowerTerm.contains("--") || lowerTerm.contains("/*") || lowerTerm.contains("#")) {
+            return false;
+        }
+
+        if (lowerTerm.matches(".*\\b(select|union|insert|update|delete|drop|sleep|benchmark|pg_sleep)\\b.*")) {
+            return false;
+        }
+
+        // 3. 과도한 특수문자 포함 여부
+        if (lowerTerm.matches(".*[;{}].*")) {
+            return false;
+        }
+        return true;
     }
 
 

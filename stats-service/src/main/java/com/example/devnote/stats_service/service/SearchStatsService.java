@@ -14,6 +14,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,9 @@ public class SearchStatsService {
     private final EsSearchLogRepository searchLogRepository;
     private final StringRedisTemplate redisTemplate;
     private static final String RANKING_KEY = "ranking:search_terms";
+
+    private static final Pattern SAFE_SEARCH_TERM =
+            Pattern.compile("^[a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\\s._\\-+#]{1,50}$");
 
     /**
      * 10분마다 실행되어 인기 검색어 랭킹을 갱신
@@ -83,31 +87,12 @@ public class SearchStatsService {
 
     // 유효성 검사 로직
     private boolean isValidSearchTerm(String term) {
-        if (term == null || term.trim().isEmpty()) {
-            return false;
-        }
+        if (term == null) return false;
 
-        // 1. 길이 제한
-        if (term.length() > 50) {
-            return false;
-        }
-        // 2. SQL 인젝션 및 특수문자 패턴 차단
-        // - SQL 주석: --, #, /*
-        // - SQL 키워드: SELECT, UNION, SLEEP, BENCHMARK 등 (대소문자 무관)
-        // - 시스템 함수 호출 패턴: (, )
-        String lowerTerm = term.toLowerCase();
-        if (lowerTerm.contains("--") || lowerTerm.contains("/*") || lowerTerm.contains("#")) {
-            return false;
-        }
+        String trimmed = term.trim();
+        if (trimmed.isEmpty()) return false;
 
-        if (lowerTerm.matches(".*\\b(select|union|insert|update|delete|drop|sleep|benchmark|pg_sleep)\\b.*")) {
-            return false;
-        }
-
-        // 3. 과도한 특수문자 포함 여부
-        if (lowerTerm.matches(".*[;{}].*")) {
-            return false;
-        }
-        return true;
+        // 정규식 매칭 여부 확인
+        return SAFE_SEARCH_TERM.matcher(trimmed).matches();
     }
 }

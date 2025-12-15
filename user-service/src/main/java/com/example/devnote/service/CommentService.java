@@ -386,23 +386,26 @@ public class CommentService {
     /** 여러 콘텐츠의 댓글 수를 일괄 조회 (대댓글 포함) */
     @Transactional(readOnly = true)
     public Map<Long, Integer> getCommentCounts(List<Long> contentIds) {
-        Map<Long, Integer> result = new HashMap<>();
-
-        for (Long contentId : contentIds) {
-            List<CommentEntity> comments = commentRepository
-                    .findByTargetTypeAndTargetIdAndParentIdIsNullOrderByCreatedAtAsc(
-                            CommentTargetType.CONTENT, contentId);
-            int totalCount = 0;
-
-            for (CommentEntity comment : comments) {
-                totalCount++;
-                totalCount += countReplies(comment.getId());
-            }
-
-            result.put(contentId, totalCount);
+        if(contentIds == null || contentIds.isEmpty()) {
+            return Collections.emptyMap();
         }
 
-        return result;
+        // 단일 GROUP BY 쿼리로 모든 콘텐츠 댓글 수 집계
+        List<Map<String, Object>> results = commentRepository.countCommentsByContentIds(contentIds);
+
+        // 결과를 Map<Long, Integer>로 변환
+        Map<Long, Integer> countMap = results.stream()
+                .collect(Collectors.toMap(
+                        row -> ((Number) row.get("contentId")).longValue(),
+                        row -> ((Number) row.get("commentCount")).intValue()
+                ));
+
+        // 댓글이 없는 콘텐츠는 0으로 초기화
+        for (Long contentId : contentIds) {
+            countMap.putIfAbsent(contentId, 0);
+        }
+
+        return countMap;
     }
 
     /** 특정 댓글의 대댓글 수를 재귀적으로 계산 */

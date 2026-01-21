@@ -77,11 +77,8 @@ public class CategoryClassificationService {
             try {
                 String prompt = buildBatchPrompt(batch, scheme);
 
-                // --- 수정된 부분 1: generateContent 메서드에 null 파라미터 추가 ---
-                // (사용하려는 모델 이름을 "gemini-1.5-flash" 대신 원하는 모델로 변경하셔도 됩니다)
-                GenerateContentResponse resp = genaiClient.models.generateContent("gemini-1.5-flash", prompt, null);
+                GenerateContentResponse resp = genaiClient.models.generateContent("gemini-2.5-flash-lite", prompt, null);
 
-                // --- 수정된 부분 2: getText() -> text() 메서드로 변경 ---
                 String responseText = resp.text();
 
                 Map<Long, String> classifiedCategories = parseAiResponse(responseText);

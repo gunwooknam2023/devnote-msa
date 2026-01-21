@@ -23,49 +23,65 @@ public class SearchStatsService {
 
     private final EsSearchLogRepository searchLogRepository;
     private final StringRedisTemplate redisTemplate;
-    private static final String RANKING_KEY = "ranking:search_terms";
+    private static final String RANKING_KEY_PREFIX = "ranking:search_terms:";
 
     private static final Pattern SAFE_SEARCH_TERM =
             Pattern.compile("^[a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\\s._\\-+#]{1,50}$");
 
     /**
-     * 10분마다 실행되어 인기 검색어 랭킹을 갱신
+     * 10분마다 실행, 서버 기동 즉시 모든 소스(YOUTUBE, NEWS) 랭킹 업데이트
      */
-    @Scheduled(fixedRate = 600000, initialDelay = 60000)
-    public void updateUserSearchRanking() {
-        log.info("[SCHEDULED] Starting popular search term ranking update.");
+    @Scheduled(fixedRate = 600000, initialDelay = 0)
+    public void updateAllRankings() {
+        log.info("[SCHEDULED] Starting popular search term ranking update for YOUTUBE and NEWS (1 Month Range)");
 
+        // 1달간의 데이터를 각 소스별로 나누어 집계 실행
+        updateRankingBySource("YOUTUBE");
+        updateRankingBySource("NEWS");
+    }
+
+    /**
+     * 특정 소스에 대해 최근 1달간의 데이터에 가중치를 적용하여 Redis에 저장
+     */
+    private void updateRankingBySource(String source) {
         Instant now = Instant.now();
         Map<String, Double> scoreMap = new HashMap<>();
 
-        // 1. 시간대별로 가중치를 다르게 하여 검색 로그를 조회하고 점수를 합산
-        // - 최근 1시간 내 검색어: 10점
-        addScores(scoreMap, searchLogsBetween(now.minus(1, ChronoUnit.HOURS), now), 10.0);
-        // - 1시간 전 ~ 6시간 전 검색어: 5점
-        addScores(scoreMap, searchLogsBetween(now.minus(6, ChronoUnit.HOURS), now.minus(1, ChronoUnit.HOURS)), 5.0);
-        // - 6시간 전 ~ 24시간 전 검색어: 1점
-        addScores(scoreMap, searchLogsBetween(now.minus(24, ChronoUnit.HOURS), now.minus(6, ChronoUnit.HOURS)), 1.0);
+        // 1. 최근 1일 내 검색어: 10점
+        addScores(scoreMap, getLogs(source, now.minus(1, ChronoUnit.DAYS), now), 10.0);
+        // 2. 1일 전 ~ 7일 전 검색어: 5점
+        addScores(scoreMap, getLogs(source, now.minus(7, ChronoUnit.DAYS), now.minus(1, ChronoUnit.DAYS)), 5.0);
+        // 3. 7일 전 ~ 30일 전 검색어: 1점
+        addScores(scoreMap, getLogs(source, now.minus(30, ChronoUnit.DAYS), now.minus(7, ChronoUnit.DAYS)), 1.0);
 
-        // 2. Redis에 새로운 랭킹을 업데이트
+        String rankingKey = RANKING_KEY_PREFIX + source;
+
         if (!scoreMap.isEmpty()) {
-            String tempKey = RANKING_KEY + ":temp";
-            redisTemplate.delete(tempKey); // 임시 키 초기화
+            String tempKey = rankingKey + ":temp";
+            redisTemplate.delete(tempKey);
 
             scoreMap.forEach((query, score) ->
                     redisTemplate.opsForZSet().add(tempKey, query, score)
             );
 
-            // 임시 키의 이름을 실제 랭킹 키로 변경
-            redisTemplate.rename(tempKey, RANKING_KEY);
-            log.info("Updated popular search term ranking with {} terms.", scoreMap.size());
+            redisTemplate.rename(tempKey, rankingKey);
+            log.info("Updated [{}] ranking with {} terms.", source, scoreMap.size());
         } else {
-            redisTemplate.delete(RANKING_KEY); // 집계된 결과가 없으면 기존 랭킹 삭제
-            log.info("No recent search terms to rank. Cleared existing ranking.");
+            redisTemplate.delete(rankingKey);
+            log.info("No recent terms found for [{}]. Cleared ranking.", source);
         }
     }
 
     /**
      * Elasticsearch에서 특정 기간의 검색 로그 조회 메서드
+     */
+    private List<EsSearchLog> getLogs(String source, Instant start, Instant end) {
+        PageRequest pageable = PageRequest.of(0, 10000);
+        return searchLogRepository.findBySourceAndTimestampBetween(source, start, end, pageable);
+    }
+
+    /**
+     * (통합집계, 현재 사용 x -> 2026.01.21 ~ ) Elasticsearch에서 특정 기간의 검색 로그 조회 메서드
      */
     private List<EsSearchLog> searchLogsBetween(Instant start, Instant end) {
         PageRequest pageable = PageRequest.of(0, 10000);

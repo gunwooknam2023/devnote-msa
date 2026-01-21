@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface EsSearchLogRepository extends ElasticsearchRepository<EsSearchLog, String> {
     List<EsSearchLog> findByTimestampBetween(Instant start, Instant end, Pageable pageable);
+
+    List<EsSearchLog> findBySourceAndTimestampBetween(String source, Instant start, Instant end, Pageable pageable);
 }

@@ -23,6 +23,15 @@ public class EsSearchLog {
     @Field(type = FieldType.Keyword)
     private String query; // 검색어
 
+    @Field(type = FieldType.Keyword)
+    private String ip; // 검색 ip
+
+    @Field(type = FieldType.Keyword)
+    private String searchTime; // 검색 시간
+
+    @Field(type = FieldType.Keyword)
+    private String source; // 검색한 소스 (YOUTUBE, NEWS 등)
+
     @Field(type = FieldType.Date, format = DateFormat.epoch_millis)
     private Instant timestamp;
 }

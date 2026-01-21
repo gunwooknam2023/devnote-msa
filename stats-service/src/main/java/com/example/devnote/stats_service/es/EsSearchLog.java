@@ -18,6 +18,9 @@ public class EsSearchLog {
     @Field(type = FieldType.Keyword)
     private String query;
 
+    @Field(type = FieldType.Keyword)
+    private String source;
+
     @Field(type = FieldType.Date, format = DateFormat.epoch_millis)
     private Instant timestamp;
 }

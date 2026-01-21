@@ -31,6 +31,10 @@ dependencies {
 	// GEMINI
 	implementation 'com.google.genai:google-genai:1.0.0'
 
+	// 형태소 분석기
+	implementation 'org.apache.lucene:lucene-analysis-nori:9.9.1'
+	implementation 'org.apache.lucene:lucene-analysis-common:9.9.1'
+
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	annotationProcessor 'org.projectlombok:lombok'
 	implementation 'org.projectlombok:lombok'

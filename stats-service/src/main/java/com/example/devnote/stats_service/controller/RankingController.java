@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * 랭킹 통계 API 컨트롤러
@@ -98,21 +99,24 @@ public class RankingController {
      * 실시간 인기 검색어 TOP 10 조회
      */
     @GetMapping("/search-terms")
-    public ResponseEntity<ApiResponseDto<List<RankedSearchTermDto>>> getTopSearchTerms() {
-        String rankingKey = "ranking:search_terms";
+    public ResponseEntity<ApiResponseDto<List<RankedSearchTermDto>>> getTopSearchTerms(
+            @RequestParam(name = "source", defaultValue = "YOUTUBE") String source
+    ) {
+        // source에 맞는 redis 키 조회
+        String redisKey = "ranking:search_terms:" + source.toUpperCase();
 
-        // Redis의 Sorted Set에서 점수가 높은 순으로 10개 조회
-        Set<ZSetOperations.TypedTuple<String>> topTerms = redisTemplate.opsForZSet()
-                .reverseRangeWithScores(rankingKey, 0, 9);
+        // Redis ZSet에서 해당 소스의 상위 10개 데이터를 가져옴
+        Set<ZSetOperations.TypedTuple<String>> ranking = redisTemplate.opsForZSet()
+                .reverseRangeWithScores(redisKey, 0, 9);
 
         AtomicLong rank = new AtomicLong(1);
-        List<RankedSearchTermDto> result = topTerms.stream()
+        List<RankedSearchTermDto> result = ranking.stream()
                 .map(tuple -> RankedSearchTermDto.builder()
                         .rank(rank.getAndIncrement())
                         .term(tuple.getValue())
                         .score(tuple.getScore())
                         .build())
-                .toList();
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(
                 ApiResponseDto.<List<RankedSearchTermDto>>builder()

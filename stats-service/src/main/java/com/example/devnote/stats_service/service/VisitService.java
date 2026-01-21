@@ -16,7 +16,7 @@ import java.util.*;
 
 /**
  * 방문자 통계 서비스
- * - 12시간 버킷(00~11, 12~23) 중복 방지 → 같은 방문자 하루 최대 2회 카운트
+ * - 24시간(하루) 단위 중복 방지 → 같은 방문자 하루 최대 1회 카운트
  * - Redis에 일/시간 카운터를 올려 실시간 조회 가속화
  * - DB에는 VisitEvent(버킷 단위 1행)로 영속
  */
@@ -35,11 +35,9 @@ public class VisitService {
     private String hourKey(LocalDate day, int hour) { return "visit:count:hour:" + DAY_FMT.format(day) + ":" + String.format("%02d", hour); }
     private String dedupKey(String visitorHash, Instant bucketStart) { return "visit:dedup:" + visitorHash + ":" + bucketStart.toEpochMilli(); }
 
-    /** 현재 시각이 속한 12시간 버킷의 시작 시각(ZonedDateTime) */
+    /** 현재 날짜의 시작 시각(00:00:00) */
     private ZonedDateTime bucketStart(ZonedDateTime now) {
-        int h = now.getHour();
-        int startHour = (h < 12) ? 0 : 12;
-        return now.withHour(startHour).withMinute(0).withSecond(0).withNano(0);
+        return now.toLocalDate().atStartOfDay(ZONE);
     }
 
     /**
@@ -59,7 +57,7 @@ public class VisitService {
 
     /**
      * 방문 트래킹
-     * - 동일 방문자/동일 12시간 버킷에서는 1회만 카운트
+     * - 동일 방문자/동일 날짜(24시간) 내에서는 1회만 카운트
      * - Redis 카운터 증가 + DB VisitEvent 저장(유니크 제약으로 중복 방지)
      */
     public TrackResponseDto track(TrackRequestDto in, HttpServletRequest req) {

@@ -77,16 +77,15 @@ public class ContentController {
         );
     }
 
+
     /** 단일 콘텐츠 조회 (찜 기능용 존재 확인) */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponseDto<ContentDto>> getById(
             @PathVariable Long id,
             HttpServletRequest req
     ) {
-        ContentDto dto = contentService.getContentById(id);  // 서비스 레이어에서 NoSuchElementException 처리
-        if("YOUTUBE".equalsIgnoreCase(dto.getSource())) {
-            contentService.countView(id, req);
-        }
+         ContentDto dto = contentService.getContentById(id);
+
         return ResponseEntity.ok(
                 ApiResponseDto.<ContentDto>builder()
                         .message("Fetched content")
@@ -94,6 +93,16 @@ public class ContentController {
                         .data(dto)
                         .build()
         );
+    }
+
+    /**
+     * 조회수 증가
+     */
+    @PostMapping("/{id}/view")
+    public ResponseEntity<Void> recordView (@PathVariable Long id, HttpServletRequest req) {
+        contentService.countView(id, req);
+
+        return ResponseEntity.ok().build();
     }
 
     /**

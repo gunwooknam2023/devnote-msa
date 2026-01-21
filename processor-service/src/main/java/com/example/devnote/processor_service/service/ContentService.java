@@ -31,6 +31,7 @@ import javax.annotation.Nullable;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 비즈니스 로직 수행용 서비스
@@ -83,6 +84,9 @@ public class ContentService {
                     .durationSeconds(msg.getDurationSeconds())
                     .videoForm(msg.getVideoForm())
                     .subscriberCount(msg.getSubscriberCount())
+                    .localViewCount(0L)
+                    .favoriteCount(0L)
+                    .commentCount(0L)
                     .build();
             ent = contentRepository.save(ent);
             log.info("Saved ContentEntity id={}", ent.getId());
@@ -289,6 +293,9 @@ public class ContentService {
                 long cur = e.getLocalViewCount() == null ? 0 : e.getLocalViewCount();
                 e.setLocalViewCount(cur + delta);
                 contentRepository.save(e);
+                esContentRepository.save(toEsContent(e));
+
+                log.debug("Flushed view count to DB and ES for id={}", id);
             });
         }
     }

@@ -1,4 +1,5 @@
 # DevNote: 개발자 콘텐츠 큐레이션 플랫폼
+[🔗 서비스 바로가기 (devnote.kr)](https://devnote.kr)
 
 > **"지식의 분산화를 해결하고, 개발자에게 필요한 정보만 정제하여 제공한다."**  
 > DevNote는 MSA 기반의 콘텐츠 큐레이션 플랫폼으로, 수많은 IT 뉴스 및 YouTube 개발 정보를 효율적으로 수집하고 사용자에게 개인화된 형태로 제공합니다.
@@ -11,24 +12,24 @@
 
 ```mermaid
 graph TD
-    subgraph "Client Layer"
+    subgraph Client_Layer [Client Layer]
         Next[Next.js Client]
     end
 
-    subgraph "Infrastructure Layer"
+    subgraph Infrastructure_Layer [Infrastructure Layer]
         Nginx[Nginx Reverse Proxy]
         Gateway[Spring Cloud Gateway]
         Eureka[Eureka Server - Discovery]
     end
 
-    subgraph "Microservices Layer"
+    subgraph Microservices_Layer [Microservices Layer]
         User[User Service - Auth/Profile]
         News[News & YouTube Service]
         Processor[Processor Service - Sync]
         Stats[Stats Service - Ranking]
     end
 
-    subgraph "Data & Messaging Layer"
+    subgraph Data_Messaging_Layer [Data & Messaging Layer]
         MariaDB[(MariaDB)]
         Redis[(Redis - Token/Cache)]
         Kafka[[Apache Kafka]]
@@ -43,11 +44,11 @@ graph TD
     Gateway --> Processor
     Gateway --> Stats
 
-    User <--> MariaDB
-    User <--> Redis
+    User --- MariaDB
+    User --- Redis
     Processor --> Kafka
-    Stats <-- Kafka
-    Stats <--> ES
+    Kafka --> Stats
+    Stats --- ES
 ```
 
 ---

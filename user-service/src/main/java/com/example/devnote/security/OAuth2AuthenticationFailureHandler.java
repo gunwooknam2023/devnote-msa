@@ -1,5 +1,6 @@
 package com.example.devnote.security;
 
+import com.example.devnote.config.HttpCookieOAuth2AuthorizationRequestRepository;
 import com.example.devnote.config.JwtTokenProvider;
 import com.example.devnote.exception.UserWithdrawnException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,12 +22,16 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OAuth2AuthenticationFailureHandler implements AuthenticationFailureHandler {
     private final JwtTokenProvider tokenProvider;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
 
     @Value("${app.frontend-url}")
     private List<String> frontendUrls;
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException {
+        // OAuth2 관련 쿠키 정리
+        cookieAuthorizationRequestRepository.removeAuthorizationRequestCookies(request, response);
+        
         String baseRedirect = frontendUrls.get(0);
 
         // 커스텀 예외 처리 로직

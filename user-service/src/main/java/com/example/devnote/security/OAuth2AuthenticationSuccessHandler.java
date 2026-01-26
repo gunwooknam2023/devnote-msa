@@ -1,5 +1,6 @@
 package com.example.devnote.security;
 
+import com.example.devnote.config.HttpCookieOAuth2AuthorizationRequestRepository;
 import com.example.devnote.config.JwtTokenProvider;
 import com.example.devnote.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +29,7 @@ import java.util.List;
 public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccessHandler {
     private final JwtTokenProvider tokenProvider;
     private final StringRedisTemplate redis;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
     /**
      * 로그인 성공 시 JWT 발급 후 쿠키 저장하고, 프론트로 Redirect
      */
@@ -58,10 +60,13 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         // 4. HttpOnly 쿠키에 토큰을 설정
         setTokenCookies(response, accessToken, refreshToken);
 
-        // 5. next 파라미터 확인
+        // 5. OAuth2 관련 쿠키 정리
+        cookieAuthorizationRequestRepository.removeAuthorizationRequestCookies(request, response);
+
+        // 6. next 파라미터 확인
         String redirectPath = getRedirectPath(request, response);
 
-        // 6. 프론트엔드로 리다이렉트
+        // 7. 프론트엔드로 리다이렉트
         String redirectUrl = frontendUrls.get(0) + redirectPath;
         response.sendRedirect(redirectUrl);
     }

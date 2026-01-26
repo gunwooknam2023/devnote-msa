@@ -28,6 +28,7 @@ public class SecurityConfig {
     private final CustomOidcUserService oidcUserService;
     private final OAuth2AuthenticationSuccessHandler successHandler;
     private final OAuth2AuthenticationFailureHandler failureHandler;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -52,7 +53,11 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(a -> a.baseUri("/oauth2/authorize"))
+                        .authorizationEndpoint(a -> a
+                                .baseUri("/oauth2/authorize")
+                                // 쿠키에 AuthorizationRequest 저장
+                                .authorizationRequestRepository(cookieAuthorizationRequestRepository)
+                        )
                         .redirectionEndpoint(r -> r.baseUri("/login/oauth2/code/*"))
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(oauth2UserService)   // 일반 OAuth2.0 용

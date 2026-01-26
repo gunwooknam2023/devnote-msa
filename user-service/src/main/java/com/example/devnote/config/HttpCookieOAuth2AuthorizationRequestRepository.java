@@ -3,6 +3,7 @@ package com.example.devnote.config;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
@@ -15,6 +16,7 @@ import java.util.Base64;
  * 세션 대신 쿠키에 OAuth2 AuthorizationRequest를 저장하는 repository
  */
 @Component
+@Slf4j
 public class HttpCookieOAuth2AuthorizationRequestRepository 
         implements AuthorizationRequestRepository<OAuth2AuthorizationRequest> {
 
@@ -27,9 +29,25 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 
     @Override
     public OAuth2AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request) {
+
+        log.info("쿠키에서 AuthorizationRequest 로드 시도");
+
+
         return getCookie(request, OAUTH2_AUTHORIZATION_REQUEST_COOKIE_NAME)
-                .map(cookie -> deserialize(cookie, OAuth2AuthorizationRequest.class))
-                .orElse(null);
+                .map(cookie -> {
+                    try {
+                        OAuth2AuthorizationRequest authRequest = deserialize(cookie, OAuth2AuthorizationRequest.class);
+                        log.info("AuthorizationRequest 로드 성공: state={}", authRequest.getState());
+                        return authRequest;
+                    } catch (Exception e) {
+                        log.error("AuthorizationRequest 역직렬화 실패", e);
+                        return null;
+                    }
+                })
+                .orElseGet(() -> {
+                    log.warn("쿠키에 AuthorizationRequest가 없습니다.");
+                    return null;
+                });
     }
 
     @Override
@@ -37,11 +55,13 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
                                          HttpServletRequest request,
                                          HttpServletResponse response) {
         if (authorizationRequest == null) {
+            log.info("AuthorizationRequest가 null이므로 쿠키 삭제");
             deleteCookie(request, response, OAUTH2_AUTHORIZATION_REQUEST_COOKIE_NAME);
             deleteCookie(request, response, REDIRECT_URI_PARAM_COOKIE_NAME);
             return;
         }
 
+        log.info("AuthorizationRequest 쿠키에 저장: state={}", authorizationRequest.getState());
         addCookie(response, OAUTH2_AUTHORIZATION_REQUEST_COOKIE_NAME,
                 serialize(authorizationRequest), COOKIE_EXPIRE_SECONDS);
 

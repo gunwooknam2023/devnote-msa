@@ -104,13 +104,13 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
     }
 
     private void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setMaxAge(maxAge);
-        cookie.setSecure(cookieSecure);
-        String cookieHeader = String.format("%s=%s; Path=/; Max-Age=%d; HttpOnly; %s; SameSite=None",
-                name, value, maxAge, cookieSecure ? "Secure" : "");
+
+        log.info("쿠키 설정 - name: {}, cookieSecure: {}", name, cookieSecure);
+
+        String cookieHeader = String.format(
+                "%s=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=None",
+                name, value, maxAge
+        );
         response.addHeader("Set-Cookie", cookieHeader);
     }
 

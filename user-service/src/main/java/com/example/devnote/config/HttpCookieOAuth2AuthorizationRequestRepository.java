@@ -121,7 +121,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
         log.info("쿠키 설정 - name: {}, cookieSecure: {}", name, cookieSecure);
 
         String cookieHeader = String.format(
-                "%s=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=Lax",
+                "%s=%s; Path=/; Domain=.devnote.kr; Max-Age=%d; HttpOnly; Secure; SameSite=Lax",
                 name, value, maxAge
         );
         response.addHeader("Set-Cookie", cookieHeader);
@@ -132,10 +132,11 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
         if (cookies != null) {
             for (Cookie cookie : cookies) {
                 if (name.equals(cookie.getName())) {
-                    cookie.setValue("");
-                    cookie.setPath("/");
-                    cookie.setMaxAge(0);
-                    response.addCookie(cookie);
+                    String cookieHeader = String.format(
+                            "%s=; Path=/; Domain=.devnote.kr; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+                            name
+                    );
+                    response.addHeader("Set-Cookie", cookieHeader);
                 }
             }
         }

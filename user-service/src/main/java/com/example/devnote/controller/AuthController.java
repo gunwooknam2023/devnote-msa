@@ -102,7 +102,7 @@ public class AuthController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, clearRefresh.toString());
 
-        // 4) accessToken 쿠키도 만료 (로그인 시와 동일한 속성으로!)
+        // 4) accessToken 쿠키도 만료
         ResponseCookie clearAccess = ResponseCookie.from("accessToken", "")
                 .httpOnly(true)
                 .secure(cookieSecure)

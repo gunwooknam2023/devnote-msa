@@ -31,7 +31,20 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
     public OAuth2AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request) {
 
         log.info("쿠키에서 AuthorizationRequest 로드 시도");
+        log.info("요청 URL: {}", request.getRequestURL());
 
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            log.info("전송된 쿠키 개수: {}", cookies.length);
+            for (Cookie c : cookies) {
+                log.info("쿠키: {}={}", c.getName(), 
+                    c.getName().equals(OAUTH2_AUTHORIZATION_REQUEST_COOKIE_NAME) 
+                        ? "(value 존재, length=" + c.getValue().length() + ")" 
+                        : c.getValue());
+            }
+        } else {
+            log.warn("요청에 쿠키가 존재하지 않습니다.");
+        }
 
         return getCookie(request, OAUTH2_AUTHORIZATION_REQUEST_COOKIE_NAME)
                 .map(cookie -> {
@@ -108,7 +121,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
         log.info("쿠키 설정 - name: {}, cookieSecure: {}", name, cookieSecure);
 
         String cookieHeader = String.format(
-                "%s=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=None",
+                "%s=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=Lax",
                 name, value, maxAge
         );
         response.addHeader("Set-Cookie", cookieHeader);

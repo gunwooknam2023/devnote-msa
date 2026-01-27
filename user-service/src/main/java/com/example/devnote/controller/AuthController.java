@@ -53,7 +53,7 @@ public class AuthController {
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", dto.getAccessToken())
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("None")
+                .sameSite("Lax")
                 .path("/")
                 .maxAge(accessExpSec)
                 .build();
@@ -96,21 +96,36 @@ public class AuthController {
         ResponseCookie clearRefresh = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("None")
+                .sameSite("Lax")
                 .path("/")
                 .maxAge(0)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, clearRefresh.toString());
 
-        // 4) accessToken 쿠키도 만료
+        // 4) accessToken 쿠키도 만료 (로그인 시와 동일한 속성으로!)
         ResponseCookie clearAccess = ResponseCookie.from("accessToken", "")
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("None")
+                .sameSite("Lax")
                 .path("/")
                 .maxAge(0)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, clearAccess.toString());
+
+        // 5) JSESSIONID 세션 쿠키 삭제
+        ResponseCookie clearSession = ResponseCookie.from("JSESSIONID", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, clearSession.toString());
+
+        // 6) 세션 무효화
+        request.getSession(false);
+        if (request.getSession(false) != null) {
+            request.getSession().invalidate();
+        }
 
         return ResponseEntity.ok().build();
     }

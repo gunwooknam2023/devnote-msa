@@ -23,6 +23,11 @@ public class ContentEntity {
     private String category;
     private String title;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
+    @Builder.Default
+    private ContentStatus status = ContentStatus.ACTIVE;
+
     @Column(name = "channel_id", length = 50)
     private String channelId;
 

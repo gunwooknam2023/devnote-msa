@@ -146,4 +146,24 @@ public class ContentController {
                         .build()
         );
     }
+
+    /**
+     * 삭제/비공개 감지된 콘텐츠 숨김 처리
+     * - 프론트엔드에서 썸네일 120x90 감지 시 호출
+     * - 해당 콘텐츠를 HIDDEN 상태로 변경
+     */
+    @PostMapping("/{id}/report-unavailable")
+    public ResponseEntity<ApiResponseDto<Boolean>> reportUnavailable(@PathVariable Long id) {
+        log.info("Received unavailable content report: id={}", id);
+        
+        boolean hidden = contentService.hideContent(id);
+        
+        return ResponseEntity.ok(
+                ApiResponseDto.<Boolean>builder()
+                        .message(hidden ? "Content hidden successfully" : "Content already hidden or not found")
+                        .statusCode(200)
+                        .data(hidden)
+                        .build()
+        );
+    }
 }

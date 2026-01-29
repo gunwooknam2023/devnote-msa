@@ -215,9 +215,10 @@ public class ContentService {
 
     public ContentDto getContentById(Long id) {
         return contentRepository.findById(id)
+                .filter(entity -> entity.getStatus() != ContentStatus.HIDDEN) // HIDDEN이면 없는 취급
                 .map(this::toDto)
                 .orElseThrow(() -> {
-                    log.warn("Content not found: {}", id);
+                    log.warn("Content not found or hidden: {}", id);
                     return new ResponseStatusException(
                             HttpStatus.NOT_FOUND,
                             "Content not found: " + id

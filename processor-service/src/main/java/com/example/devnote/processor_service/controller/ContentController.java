@@ -166,4 +166,23 @@ public class ContentController {
                         .build()
         );
     }
+
+    /**
+     * HIDDEN 상태 콘텐츠를 ES에서 동기화 삭제
+     * - 배포 후 한 번 호출하여 기존 HIDDEN 데이터 정리
+     */
+    @PostMapping("/sync-hidden")
+    public ResponseEntity<ApiResponseDto<Integer>> syncHiddenContent() {
+        log.info("Starting sync of hidden contents to ES");
+        
+        int count = contentService.syncHiddenContentToEs();
+        
+        return ResponseEntity.ok(
+                ApiResponseDto.<Integer>builder()
+                        .message("Synced hidden contents to ES")
+                        .statusCode(200)
+                        .data(count)
+                        .build()
+        );
+    }
 }

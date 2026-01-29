@@ -5,6 +5,7 @@ import com.example.devnote.processor_service.dto.ContentDto;
 import com.example.devnote.processor_service.dto.ContentMessageDto;
 import com.example.devnote.processor_service.dto.PageResponseDto;
 import com.example.devnote.processor_service.entity.ContentEntity;
+import com.example.devnote.processor_service.entity.ContentStatus;
 import com.example.devnote.processor_service.es.EsContent;
 import com.example.devnote.processor_service.es.EsContentRepository;
 import com.example.devnote.processor_service.repository.ContentRepository;
@@ -149,6 +150,7 @@ public class ContentService {
 
     /**
      * 조건에 따른 JPA Specification 생성
+     * - ACTIVE 상태인 콘텐츠만 조회
      */
     private Specification<ContentEntity> buildSpecification(
             String source,
@@ -159,6 +161,8 @@ public class ContentService {
     ) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+
+            predicates.add(cb.equal(root.get("status"), ContentStatus.ACTIVE));
 
             if (source != null && !source.isBlank()) {
                 predicates.add(cb.equal(root.get("source"), source));
@@ -242,6 +246,32 @@ public class ContentService {
         contentRepository.deleteById(id);
         esContentRepository.deleteById(id);
         log.info("Content deleted from DB and ES: {}", id);
+    }
+
+    /**
+     * 삭제/비공개 감지된 콘텐츠를 HIDDEN 상태로 변경
+     * (썸네일 120x90 감지 시 프론트에서 호출)
+     */
+    @Transactional
+    public boolean hideContent(Long id) {
+        return contentRepository.findById(id)
+                .map(entity -> {
+                    // 이미 HIDDEN이면 스킵
+                    if (entity.getStatus() == ContentStatus.HIDDEN) {
+                        log.debug("Content already hidden: {}", id);
+                        return false;
+                    }
+                    
+                    entity.setStatus(ContentStatus.HIDDEN);
+                    contentRepository.save(entity);
+                    
+                    // ES에서도 삭제
+                    esContentRepository.deleteById(id);
+                    
+                    log.info("Content hidden due to deleted/private video: {}", id);
+                    return true;
+                })
+                .orElse(false);
     }
 
     /**

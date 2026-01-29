@@ -93,6 +93,29 @@ public class ContentSearchService {
                                 );
                             }
 
+                            // 4. ACTIVE 상태인 콘텐츠만 검색 (HIDDEN 제외)
+                            b.filter(f -> f
+                                    .bool(fb -> fb
+                                            .should(s -> s
+                                                    .term(t -> t
+                                                            .field("status")
+                                                            .value("ACTIVE")
+                                                    )
+                                            )
+                                            // status 필드가 없는 기존 문서도 포함 (하위 호환)
+                                            .should(s -> s
+                                                    .bool(nb -> nb
+                                                            .mustNot(mn -> mn
+                                                                    .exists(ex -> ex
+                                                                            .field("status")
+                                                                    )
+                                                            )
+                                                    )
+                                            )
+                                            .minimumShouldMatch("1")
+                                    )
+                            );
+
                             return b;
                         })
                 )

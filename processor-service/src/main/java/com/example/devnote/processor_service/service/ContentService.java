@@ -275,6 +275,29 @@ public class ContentService {
     }
 
     /**
+     * DB에서 HIDDEN 상태인 모든 콘텐츠를 ES에서 삭제 (동기화)
+     * - 배포 후 한 번 실행하여 기존 HIDDEN 데이터 정리
+     */
+    @Transactional(readOnly = true)
+    public int syncHiddenContentToEs() {
+        List<ContentEntity> hiddenContents = contentRepository.findByStatus(ContentStatus.HIDDEN);
+        int count = 0;
+        
+        for (ContentEntity entity : hiddenContents) {
+            try {
+                esContentRepository.deleteById(entity.getId());
+                count++;
+                log.debug("Deleted hidden content from ES: {}", entity.getId());
+            } catch (Exception e) {
+                log.warn("Failed to delete hidden content from ES: {}", entity.getId(), e);
+            }
+        }
+        
+        log.info("Synced {} hidden contents to ES (deleted)", count);
+        return count;
+    }
+
+    /**
      * 조회수 카운팅 (뉴스/유튜브 공용)
      */
     public void countView(Long id, @Nullable HttpServletRequest req) {
@@ -387,6 +410,7 @@ public class ContentService {
                 .subscriberCount(e.getSubscriberCount())
                 .favoriteCount(e.getFavoriteCount())
                 .commentCount(e.getCommentCount())
+                .status(e.getStatus() != null ? e.getStatus().name() : "ACTIVE")
                 .build();
     }
 }

@@ -79,4 +79,7 @@ public class EsContent {
 
     @Field(type = FieldType.Long)
     private Long commentCount;
+
+    @Field(type = FieldType.Keyword)
+    private String status;
 }

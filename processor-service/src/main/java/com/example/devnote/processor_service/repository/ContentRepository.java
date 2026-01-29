@@ -2,6 +2,7 @@ package com.example.devnote.processor_service.repository;
 
 import com.example.devnote.processor_service.dto.CategoryCountDto;
 import com.example.devnote.processor_service.entity.ContentEntity;
+import com.example.devnote.processor_service.entity.ContentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -41,4 +42,9 @@ public interface ContentRepository extends JpaRepository<ContentEntity, Long>, J
             "WHERE c.source = :source AND c.category IS NOT NULL " +
             "GROUP BY c.category")
     List<CategoryCountDto> countByCategoryAndSource(@Param("source") String source);
+
+    /**
+     * 특정 상태의 콘텐츠 목록 조회
+     */
+    List<ContentEntity> findByStatus(ContentStatus status);
 }
